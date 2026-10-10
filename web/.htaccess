@@ -1,0 +1,7 @@
+# Colesteroids OG+: selain tarkistaa aina pelin uusimman version,
+# jotta päivitykset näkyvät pelaajille heti.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|php)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
