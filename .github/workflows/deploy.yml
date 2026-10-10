@@ -1,0 +1,23 @@
+name: Julkaise peli
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kopioi peli hessujarvinen.com/softa/colesteroids
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./web/
+          server-dir: ./
