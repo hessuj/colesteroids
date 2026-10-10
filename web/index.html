@@ -120,6 +120,11 @@ tr.top td:nth-child(1) { color: var(--gold); }
 #pad .left { grid-column: 1; grid-row: 2; }
 #pad .down { grid-column: 2; grid-row: 2; }
 #pad .right { grid-column: 3; grid-row: 2; }
+#consent { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); margin-inline: auto; max-width: 560px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; font-size: 14px; line-height: 1.45; color: var(--muted); z-index: 10; }
+#consent p { margin: 0; }
+#consent .row { justify-content: flex-end; }
+#consent button { font-size: 14px; padding: 8px 16px; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; cursor: pointer; }
 #tools { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; }
 #tools button { padding: 6px 12px; font-size: 14px; background: rgba(42,42,48,.6); }
 @media (prefers-reduced-motion: reduce) { #healthFill { transition: none; } #timer.low { animation: none; } }
@@ -173,6 +178,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
       <dt>OG+ (2026)</dt><dd>JavaScript, vibekoodattu Claudella</dd>
       <dt>Lisenssi</dt><dd><a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT</a></dd>
     </dl>
+    <p class="copy" id="privacyNote" hidden>Kävijäseuranta: Google Analytics, vain suostumuksella. <button type="button" class="linkish" id="consentChange">Muuta evästeasetuksia</button></p>
     <p class="copy">© 2026 Hessu Järvinen. Colesteroids on Hessu Järvisen alkuperäinen idea. Koodi on julkaistu MIT-lisenssillä: saat parannella sitä vapaasti, kunhan tekijänoikeusilmoitus säilyy mukana.</p>
     <div class="row"><button id="aboutClose">Sulje</button></div>
   </div>
@@ -231,6 +237,14 @@ tr.top td:nth-child(1) { color: var(--gold); }
       <button id="yesBtn">Yes</button>
       <button id="noBtn">No</button>
     </div>
+  </div>
+</div>
+
+<div id="consent" role="region" aria-label="Evästeasetukset" hidden>
+  <p>Peli käyttää Google Analyticsia, jotta näen montako pelaajaa peliä pelaa ja miten pelit päättyvät. Tietoja ei käytetä mainontaan. Sallitko analytiikkaevästeet?</p>
+  <div class="row">
+    <button id="consentNo">Ei kiitos</button>
+    <button id="consentYes" class="primary">Salli</button>
   </div>
 </div>
 
@@ -510,6 +524,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     explode(player.x, player.y, 260, "255,105,180");
     run.final = score();
     run.seconds = Math.floor(run.elapsed);
+    track("game_end", { reason: "energy", score: run.final, eaten: run.eaten, seconds: run.seconds });
     setTimeout(showGameOver, 1200);
   }
   // ...tai kun aika loppuu
@@ -518,6 +533,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     run.reason = "time";
     run.final = score();
     run.seconds = GAME_TIME;
+    track("game_end", { reason: "time", score: run.final, eaten: run.eaten, seconds: run.seconds });
     $("score").textContent = run.final.toLocaleString("fi-FI");
     message("Aika loppui!");
     setTimeout(showGameOver, 1200);
@@ -528,6 +544,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
   function show(id) { overlays.forEach(o => $(o).hidden = o !== id); }
 
   function startGame() {
+    track("game_start");
     buildWorld(true);
     run = { health: MAX_HEALTH, eaten: 0, elapsed: 0, nextExtra: EXTRA_PAHIS_EVERY, invuln: 0, shown: -1, leftShown: -1 };
     state = "playing"; paused = false;
@@ -672,6 +689,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     $("shareNote").textContent = "Jakoteksti kopioituu leikepöydälle. Liitä se Facebookin julkaisuun.";
   }
   $("fbShare").addEventListener("click", () => {
+    track("share", { method: "Facebook", content_type: "score" });
     const text = shareText();
     const note = $("shareNote");
     try {
@@ -734,6 +752,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     saveNick(nick);
     $("saveBtn").disabled = true;
     await saveScore(nick);
+    track("post_score", { score: run.final });
     $("saveBtn").disabled = false;
     showBoard(true);
   });
@@ -816,6 +835,47 @@ tr.top td:nth-child(1) { color: var(--gold); }
   window.addEventListener("resize", resize);
   resize();
   $("rules").textContent = `Aikaa on ${GAME_TIME} sekuntia. Peli päättyy, kun aika loppuu tai energia on nolla.`;
+  // ---------- Kävijäseuranta (Google Analytics 4, vain suostumuksella) ----------
+  // Ladataan vain julkaistulla sivustolla ja vasta kun pelaaja on sallinut analytiikkaevästeet.
+  const GA_ID = "G-H9HNS0SNV3";                   // GA4-mittaustunnus
+  const GA_HOSTS = /(^|\.)hessujarvinen\.com$/;
+  const CONSENT_KEY = "colesteroids.consent";     // "granted" | "denied"
+  const gaEnabled = /^G-[A-Z0-9]+$/.test(GA_ID) && !GA_ID.includes("XXXX") && GA_HOSTS.test(location.hostname);
+  let gaLoaded = false;
+
+  function getConsent() { try { return localStorage.getItem(CONSENT_KEY); } catch { return null; } }
+  function setConsent(v) { try { localStorage.setItem(CONSENT_KEY, v); } catch {} }
+  function loadGA() {
+    if (gaLoaded) return;
+    gaLoaded = true;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    gtag("js", new Date());
+    gtag("config", GA_ID);
+    const s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_ID);
+    document.head.appendChild(s);
+  }
+  function track(name, params) {
+    if (gaLoaded && window.gtag) gtag("event", name, params || {});
+  }
+  function showConsent() { $("consent").hidden = false; }
+  $("consentYes").addEventListener("click", () => { setConsent("granted"); $("consent").hidden = true; loadGA(); });
+  $("consentNo").addEventListener("click", () => {
+    const wasLoaded = gaLoaded;
+    setConsent("denied");
+    $("consent").hidden = true;
+    if (wasLoaded) location.reload(); // pysäyttää jo ladatun seurannan
+  });
+  $("consentChange").addEventListener("click", showConsent);
+  if (gaEnabled) {
+    $("privacyNote").hidden = false;
+    const c = getConsent();
+    if (c === "granted") loadGA();
+    else if (c !== "denied") showConsent();
+  }
+
   toMenu();
   initSharedStore();
   requestAnimationFrame(frame);
