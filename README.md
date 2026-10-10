@@ -32,15 +32,20 @@ Colesteroids OG+ (2026) on sen paranneltu selainversio, joka on vibekoodattu Cla
 ## Hakemistot
 
 ```
-web/             Selainversio (yksi HTML-tiedosto, ei riippuvuuksia)
-  index.html     Peli
+web/             Selainversio
+  index.html     Peli (yksi HTML-tiedosto, ei riippuvuuksia)
+  scores.php     Yhteinen tulostaulu (PHP, tallentaa tiedostoon data/scores.json)
   og-image.png   Jakokuva (Facebook / Open Graph)
 original-2019/   Alkuperäinen C#/Jypeli-projekti (Visual Studio for Mac)
 ```
 
 ### Selainversion ajaminen
 
-Avaa `web/index.html` selaimessa tai vie `web`-kansion sisältö mille tahansa staattiselle palvelimelle. Tulostaulu tallentuu silloin pelaajan omaan selaimeen (localStorage).
+Vie `web`-kansion sisältö palvelimelle, jossa on PHP 7.4 tai uudempi. Peli käyttää silloin yhteistä tulostaulua `scores.php`:n kautta. `scores.php` luo ensimmäisellä tallennuksella `data`-kansion ja suojaa sen `.htaccess`-tiedostolla. Palvelin tarkistaa, että pisteet vastaavat pelin sääntöjä, ja rajoittaa tallennustahtia.
+
+Jos PHP:tä ei ole tai avaat `index.html`:n suoraan tiedostona, tulostaulu tallentuu pelaajan omaan selaimeen (localStorage).
+
+Julkaisu sivustolle tapahtuu GitHub Actionsilla (`.github/workflows/deploy.yml`) aina, kun `web`-kansio muuttuu `main`-haarassa.
 
 ### Alkuperäinen versio
 

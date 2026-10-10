@@ -580,7 +580,9 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
 
   // ---------- Tulosten tallennus ----------
-  // Jaettu tulostaulu artifact-tietokannassa (scores/<pelaajan id>), muuten tämän selaimen localStorage.
+  // Jaettu tulostaulu: omalla sivustolla scores.php (palvelin), Claudessa artifact-tietokanta
+  // (scores/<pelaajan id>). Jos kumpikaan ei ole käytettävissä, tämän selaimen localStorage.
+  const SCORES_API = "scores.php";
   const LOCAL_KEY = "colesteroids.scores.v1", NICK_KEY = "colesteroids.nick";
   const store = { mode: "local", db: null, uid: null, canWrite: true, shared: [], mine: [] };
   let lastSaved = null;
@@ -597,8 +599,26 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
   const byScore = (a, b) => b.score - a.score || a.at - b.at;
 
+  function serverList(data) {
+    return (Array.isArray(data?.scores) ? data.scores : []).filter(validEntry);
+  }
+  async function refreshServer() {
+    try {
+      const r = await fetch(SCORES_API, { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error(r.status);
+      store.shared = serverList(await r.json());
+      store.mode = "server";
+    } catch {
+      if (store.mode === "server") store.mode = "local";
+    }
+    if (state === "board") renderBoard();
+  }
+
   async function initSharedStore() {
-    if (!window.claude?.use) return;
+    if (!window.claude?.use) {
+      if (/^https?:$/.test(location.protocol)) await refreshServer();
+      return;
+    }
     try {
       const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
       if (!db || !user) return;
@@ -624,6 +644,24 @@ tr.top td:nth-child(1) { color: var(--gold); }
   async function saveScore(nick) {
     const entry = { id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36), nick, score: run.final, seconds: run.seconds, eaten: run.eaten, at: Date.now() };
     lastSaved = entry.id;
+    if (store.mode === "server") {
+      try {
+        const r = await fetch(SCORES_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ nick, score: entry.score, seconds: entry.seconds, eaten: entry.eaten })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.ok) {
+          lastSaved = data.id;
+          store.shared = serverList(data);
+          return "server";
+        }
+        store.serverError = data.error || "Tulosta ei voitu tallentaa yhteiseen tulostauluun.";
+      } catch {
+        store.serverError = "Yhteys tulostauluun epäonnistui.";
+      }
+    }
     if (store.mode === "shared" && store.canWrite) {
       const list = [...store.mine, entry].sort(byScore).slice(0, 25);
       try {
@@ -640,6 +678,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
 
   function boardEntries() {
+    if (store.mode === "server") return [...store.shared].sort(byScore);
     if (store.mode === "shared") {
       // tämän selaimen tulokset mukaan, jos ne eivät päässeet jaettuun tauluun
       const ids = new Set(store.shared.map(e => e.id));
@@ -665,6 +704,13 @@ tr.top td:nth-child(1) { color: var(--gold); }
       rows.appendChild(tr);
     });
     $("boardEmpty").hidden = list.length > 0;
+    if (store.mode === "server") {
+      $("boardInfo").textContent = store.serverError
+        ? store.serverError + " Tulos tallentui tähän selaimeen."
+        : "Kymmenen parasta. Yhteinen kaikille pelaajille.";
+      store.serverError = null;
+      return;
+    }
     $("boardInfo").textContent = store.mode === "shared"
       ? (store.canWrite ? "Kymmenen parasta. Yhteinen kaikille, joilla on pääsy peliin." : "Kymmenen parasta. Sinulla on lukuoikeus, joten omat tuloksesi tallentuvat vain tähän selaimeen.")
       : "Kymmenen parasta tässä selaimessa.";
@@ -707,6 +753,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
     renderBoard();
     show("board");
     $("playAgainBtn").focus();
+    // omalla sivustolla haetaan tuorein lista, kun taulu avataan valikosta
+    if (!fromGame && !window.claude?.use && /^https?:$/.test(location.protocol)) refreshServer();
   }
 
   // ---------- Viestinäyttö ----------
