@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# .NET / Visual Studio for Mac (alkuperäinen 2019-projekti)
+bin/
+obj/
+packages/
+*.user
+*.userprefs
+.vs/
+
+# Natiivikirjastot, jotka tulevat Jypelin mukana
+*.dylib
