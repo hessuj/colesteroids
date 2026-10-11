@@ -33,7 +33,7 @@ const MAX_BODY  = 2048;   // tavua
 const GAME_TIME         = 60;   // yhden kentän kesto
 const POINTS_PER_SECOND = 10;
 const MAX_EATEN         = 80;   // syötyjä hyviksiä per kenttä enintään
-const MAX_LEVELS        = 60;
+const MAX_LEVELS        = 500;
 
 /** Vihreän arvo kentässä n (1, 2, 3, ...), sama kuin levelCfg(n).greenPoints pelissä. */
 function green_points(int $n): int {

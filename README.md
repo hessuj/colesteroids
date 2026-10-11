@@ -22,16 +22,79 @@ Colesteroids on selaimessa pelattava fysiikkapeli. Ohjaat vaaleanpunaista sydän
 - Seiniin aukeaa välillä aukko samalle korkeudelle molemmille puolille. Aukosta lentänyt tulee sisään toiselta puolelta – myös ökköt.
 - Tuloksen voi tallentaa nimimerkillä tulostauluun ja jakaa Facebookissa.
 
-| Kenttä | 1 | 2 | 3 | 4 | 5+ |
-|---|---|---|---|---|---|
-| Layout | Alkuperäinen (2019) | Portaat | Käytävät | Kammiot | Sokkelo, sitten alusta |
-| Punaisia alussa | 20 | 24 | 28 | 32 | +4 / kenttä |
-| Punaisten nopeus | 70 | 85 | 100 | 115 | +15 / kenttä |
-| Osuman energiahävikki | 25 % | 25 % | 30 % | 30 % | 35 % |
-| Vihreän arvo | 100 | 150 | 200 | 250 | +50 / kenttä |
-| Vihreitä | 20 | 18 | 16 | 14 | –2 / kenttä, väh. 10 |
+| Kenttä | 1 | 2 | 3 | 4 | 5 | 6–19 | 20+ |
+|---|---|---|---|---|---|---|---|
+| Punaisia alussa | 20 | 24 | 28 | 32 | 36 | +2 / kenttä | enintään 70 |
+| Punaisten nopeus | 70 | 85 | 100 | 115 | 130 | +5 / kenttä | enintään 250 |
+| Osuman energiahävikki | 25 % | 25 % | 30 % | 30 % | 35 % | 35 % | 40 % |
+| Vihreän arvo | 100 | 150 | 200 | 250 | 300 | +50 / kenttä | +50 / kenttä |
+| Vihreitä | 20 | 18 | 16 | 14 | 12 | 10 | 10 |
 
-Näppäimet: nuolet liikuttavat, **F1** näyttää ohjeet ja **Esc** lopettaa pelin.
+### Kentät
+
+Pelissä on 50 kenttää. Kenttä 1 on alkuperäinen vuoden 2019 kenttä, kentät 2–5 tehtiin käsin ja kentät 6–50 generoitiin ohjelmallisesti. Jokainen generoitu kenttä on tarkistettu: aloituspaikka on vapaa, seinien vierustat ovat auki aukkoja varten ja kaikki alueet ovat saavutettavissa. Kentän 50 jälkeen kentät kiertävät alusta.
+
+<details>
+<summary>Kaikki 50 kenttää</summary>
+
+1. Alkuperäinen sydänalue (2019)
+2. Aortan portaat
+3. Laskimoiden käytävät
+4. Sydämen kammiot
+5. Hiussuonisokkelo
+6. Keuhkovaltimon kiito
+7. Hemoglobiinihissi
+8. Punasolujen ruuhkatunti
+9. Läppävikalabyrintti
+10. Kapillaarikarnevaali
+11. Imusuonten ihmemaa
+12. Maksan suodatinmaasto
+13. Munuaiskerästen kiemurat
+14. Ohutsuolen mutkat
+15. Pernan pallomeri
+16. Kaulavaltimon kaarre
+17. Sepelvaltimoiden solmu
+18. Verihiutaleiden hyppyrit
+19. Plasmaputki
+20. Valkosolujen vartiovuoro
+21. Palleaplaneetta
+22. Aivokuoren poimut
+23. Selkäytimen pikakaista
+24. Hermoratojen hyppely
+25. Synapsisilta
+26. Sydänpussin pomppulinna
+27. Eteisvärinäkaaos
+28. Kammiovärinän vuoristorata
+29. Diastolen lepotauko
+30. Systolen syöksy
+31. Verenpainepiikki
+32. Kolesterolikaupunki
+33. Plakkiputken ahdinko
+34. Rasvahappojen rodeo
+35. Insuliinipuisto
+36. Glukoosigalleria
+37. Hapenottoareena
+38. Hiilidioksidihuuhtelu
+39. Keuhkorakkuloiden arvoitus
+40. Henkitorven tuulitunneli
+41. Luuytimen lastentarha
+42. Fibriiniverkko
+43. Hyytymiskaskadi
+44. Vasemman kammion valtatie
+45. Oikean eteisen odotushuone
+46. Ohitusleikkauksen kiertotie
+47. Pallolaajennuksen paikka
+48. Stenttien sokkelo
+49. Sykevälivaihtelu
+50. Ison verenkierron finaali
+
+</details>
+
+### Äänet
+
+Äänitehosteet syntetisoidaan pelissä Web Audio -rajapinnalla, joten erillisiä äänitiedostoja ei ole: syöminen, räjähdys, pomput seinistä, nuolinäppäimen puhallus, seinäaukon varoitus ja avautuminen, läpilento, uusi kolesteroliökkö, kentän läpäisy ja pelin loppu. Äänet saa pois vasemman alakulman painikkeesta tai **M**-näppäimellä.
+
+Näppäimet: nuolet liikuttavat, **M** mykistää äänet, **F1** näyttää ohjeet ja **Esc** lopettaa pelin.
 
 ## Tausta
 
