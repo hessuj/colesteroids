@@ -1,11 +1,17 @@
 <?php
 /**
  * Colesteroids OG+ – yhteinen tulostaulu.
- * GET  scores.php            -> {"scores":[...]}  (kymmenen parasta)
- * POST scores.php  {nick, score, seconds, eaten} -> {"ok":true,"id":"…","scores":[...]}
+ * GET  scores.php -> {"scores":[...]}  (kymmenen parasta, yksi rivi per nimimerkki)
+ * POST scores.php  {nick, score, seconds, eaten, token}
+ *   201 {"ok":true,"id":"…","improved":true|false,"best":n,"scores":[...]}
+ *   409 {"error":"…","code":"nick_taken"}  nimimerkki kuuluu toiselle selaimelle
  *
- * Tulokset tallentuvat tiedostoon data/scores.json. Kansio suojataan .htaccessilla,
- * joten tiedostoa ei voi ladata suoraan selaimella.
+ * Jokaisesta nimimerkistä säilytetään vain paras tulos (issue #1). Nimimerkki varataan
+ * ensimmäisen tallennuksen tehneelle selaimelle: selain lähettää satunnaisen avaimen,
+ * josta palvelin tallentaa vain tiivisteen. Samalla nimimerkillä voi parantaa tulosta
+ * vain sama selain.
+ *
+ * Tulokset tallentuvat tiedostoon data/scores.json. Kansio suojataan .htaccessilla.
  *
  * MIT License, (c) 2026 Hessu Järvinen
  */
@@ -18,7 +24,7 @@ header('X-Content-Type-Options: nosniff');
 const DATA_DIR  = __DIR__ . '/data';
 const DATA_FILE = DATA_DIR . '/scores.json';
 const TOP       = 10;     // montako näytetään
-const MAX_KEEP  = 500;    // montako säilytetään
+const MAX_KEEP  = 1000;   // montako nimimerkkiä säilytetään
 const MAX_BODY  = 2048;   // tavua
 
 // Samat säännöt kuin pelissä (index.html)
@@ -44,12 +50,44 @@ function ensure_data_dir(): void {
     }
 }
 
-function top_list(array $scores): array {
-    usort($scores, function ($a, $b) {
-        return ($b['score'] <=> $a['score']) ?: ($a['at'] <=> $b['at']);
-    });
+/** Nimimerkin vertailuavain: kirjainkoko ja ylimääräiset välilyönnit eivät erota pelaajia. */
+function nick_key(string $nick): string {
+    $nick = trim(preg_replace('/\s+/u', ' ', $nick) ?? '');
+    return function_exists('mb_strtolower') ? mb_strtolower($nick, 'UTF-8') : strtolower($nick);
+}
+
+function by_score(array $a, array $b): int {
+    return ($b['score'] <=> $a['score']) ?: ($a['at'] <=> $b['at']);
+}
+
+/**
+ * Yksi rivi per nimimerkki, paras tulos voimassa. Siivoaa myös vanhat,
+ * ennen tätä muutosta tallentuneet päällekkäiset rivit.
+ */
+function dedupe(array $scores): array {
+    usort($scores, 'by_score');
+    $seen = [];
     $out = [];
-    foreach (array_slice($scores, 0, TOP) as $s) {
+    foreach ($scores as $s) {
+        if (!is_array($s) || !isset($s['nick'], $s['score'])) continue;
+        $key = $s['key'] ?? nick_key((string) $s['nick']);
+        if (isset($seen[$key])) {
+            // säilytä varaus, vaikka paras tulos olisi tullut vanhalta riviltä
+            if (empty($out[$seen[$key]]['tokenHash']) && !empty($s['tokenHash'])) {
+                $out[$seen[$key]]['tokenHash'] = $s['tokenHash'];
+            }
+            continue;
+        }
+        $s['key'] = $key;
+        $seen[$key] = count($out);
+        $out[] = $s;
+    }
+    return $out;
+}
+
+function top_list(array $scores): array {
+    $out = [];
+    foreach (array_slice(dedupe($scores), 0, TOP) as $s) {
         $out[] = [
             'id' => $s['id'], 'nick' => $s['nick'], 'score' => $s['score'],
             'seconds' => $s['seconds'], 'eaten' => $s['eaten'], 'at' => $s['at'],
@@ -104,8 +142,12 @@ $nick    = clean_nick($in['nick'] ?? '');
 $score   = filter_var($in['score'] ?? null, FILTER_VALIDATE_INT);
 $seconds = filter_var($in['seconds'] ?? null, FILTER_VALIDATE_INT);
 $eaten   = filter_var($in['eaten'] ?? null, FILTER_VALIDATE_INT);
+$token   = $in['token'] ?? '';
 
 if ($nick === '') respond(422, ['error' => 'Nimimerkki puuttuu.']);
+if (!is_string($token) || !preg_match('/^[a-f0-9]{32,64}$/', $token)) {
+    respond(422, ['error' => 'Selaimen tunniste puuttuu. Lataa sivu uudelleen.']);
+}
 if ($score === false || $seconds === false || $eaten === false
     || $seconds < 0 || $seconds > GAME_TIME
     || $eaten < 0 || $eaten > MAX_EATEN
@@ -119,8 +161,35 @@ $fh = fopen(DATA_FILE, 'c+');
 if (!$fh) respond(500, ['error' => 'Tulostaulua ei voitu avata.']);
 flock($fh, LOCK_EX);
 $store = read_store($fh);
+$scores = dedupe($store['scores']);
+
+function finish($fh, array $store, array $scores, int $code, array $data): void {
+    $store['scores'] = array_slice($scores, 0, MAX_KEEP);
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, json_encode($store, JSON_UNESCAPED_UNICODE));
+    fflush($fh);
+    flock($fh, LOCK_UN);
+    fclose($fh);
+    respond($code, $data);
+}
 
 $now = time();
+$key = nick_key($nick);
+$tokenHash = hash('sha256', $token);
+
+// Onko nimimerkki jo jonkun toisen selaimen?
+$idx = null;
+foreach ($scores as $i => $s) {
+    if ($s['key'] === $key) { $idx = $i; break; }
+}
+if ($idx !== null && !empty($scores[$idx]['tokenHash']) && !hash_equals($scores[$idx]['tokenHash'], $tokenHash)) {
+    flock($fh, LOCK_UN);
+    fclose($fh);
+    respond(409, ['error' => 'Nimimerkki on jo toisen pelaajan käytössä. Valitse toinen nimimerkki.', 'code' => 'nick_taken']);
+}
+
+// Tallennustahti
 $ipKey = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . '|' . __FILE__);
 foreach ($store['rate'] as $k => $t) {
     if (!is_int($t) || $now - $t > 3600) unset($store['rate'][$k]);
@@ -132,25 +201,33 @@ if (isset($store['rate'][$ipKey]) && $now - $store['rate'][$ipKey] < RATE_SECOND
 }
 $store['rate'][$ipKey] = $now;
 
-$entry = [
-    'id' => bin2hex(random_bytes(6)),
-    'nick' => $nick,
-    'score' => $score,
-    'seconds' => $seconds,
-    'eaten' => $eaten,
-    'at' => (int) round(microtime(true) * 1000),
-];
-$store['scores'][] = $entry;
-usort($store['scores'], function ($a, $b) {
-    return ($b['score'] <=> $a['score']) ?: ($a['at'] <=> $b['at']);
-});
-$store['scores'] = array_slice($store['scores'], 0, MAX_KEEP);
+$atMs = (int) round(microtime(true) * 1000);
 
-ftruncate($fh, 0);
-rewind($fh);
-fwrite($fh, json_encode($store, JSON_UNESCAPED_UNICODE));
-fflush($fh);
-flock($fh, LOCK_UN);
-fclose($fh);
+if ($idx !== null) {
+    $old = $scores[$idx];
+    $scores[$idx]['tokenHash'] = $tokenHash; // varaa vanha, varaamaton nimimerkki
+    if ($score <= $old['score']) {
+        // Huonompi tai yhtä hyvä tulos: tulostaulu ei muutu
+        finish($fh, $store, $scores, 201, [
+            'ok' => true, 'id' => $old['id'], 'improved' => false, 'best' => $old['score'],
+            'scores' => top_list($scores),
+        ]);
+    }
+    $scores[$idx] = array_merge($scores[$idx], [
+        'id' => bin2hex(random_bytes(6)), 'nick' => $nick, 'score' => $score,
+        'seconds' => $seconds, 'eaten' => $eaten, 'at' => $atMs,
+    ]);
+    $entryId = $scores[$idx]['id'];
+} else {
+    $entryId = bin2hex(random_bytes(6));
+    $scores[] = [
+        'id' => $entryId, 'nick' => $nick, 'key' => $key, 'tokenHash' => $tokenHash,
+        'score' => $score, 'seconds' => $seconds, 'eaten' => $eaten, 'at' => $atMs,
+    ];
+}
+usort($scores, 'by_score');
 
-respond(201, ['ok' => true, 'id' => $entry['id'], 'scores' => top_list($store['scores'])]);
+finish($fh, $store, $scores, 201, [
+    'ok' => true, 'id' => $entryId, 'improved' => true, 'best' => $score,
+    'scores' => top_list($scores),
+]);

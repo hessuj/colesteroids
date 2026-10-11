@@ -598,6 +598,37 @@ tr.top td:nth-child(1) { color: var(--gold); }
     return e && typeof e.nick === "string" && Number.isFinite(e.score) && Number.isFinite(e.seconds) && typeof e.id === "string";
   }
   const byScore = (a, b) => b.score - a.score || a.at - b.at;
+  // Nimimerkin vertailuavain: kirjainkoko ja ylimääräiset välilyönnit eivät erota pelaajia
+  const nickKey = n => n.replace(/\s+/g, " ").trim().toLowerCase();
+  // Yksi rivi per nimimerkki, paras tulos voimassa (issue #1)
+  function bestPerNick(list) {
+    const seen = new Set();
+    return [...list].sort(byScore).filter(e => {
+      const k = nickKey(e.nick);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  // Selaimen salainen tunniste: varaa nimimerkin tälle selaimelle palvelimen tulostaulussa
+  const TOKEN_KEY = "colesteroids.token";
+  let sessionToken = null;
+  function browserToken() {
+    try {
+      let t = localStorage.getItem(TOKEN_KEY);
+      if (t && /^[a-f0-9]{32,64}$/.test(t)) return t;
+      t = newToken();
+      localStorage.setItem(TOKEN_KEY, t);
+      return t;
+    } catch {
+      return sessionToken || (sessionToken = newToken());
+    }
+  }
+  function newToken() {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    return Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+  }
 
   function serverList(data) {
     return (Array.isArray(data?.scores) ? data.scores : []).filter(validEntry);
@@ -649,13 +680,20 @@ tr.top td:nth-child(1) { color: var(--gold); }
         const r = await fetch(SCORES_API, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ nick, score: entry.score, seconds: entry.seconds, eaten: entry.eaten })
+          body: JSON.stringify({ nick, score: entry.score, seconds: entry.seconds, eaten: entry.eaten, token: browserToken() })
         });
         const data = await r.json().catch(() => ({}));
         if (r.ok && data.ok) {
           lastSaved = data.id;
           store.shared = serverList(data);
+          if (data.improved === false) {
+            store.notice = `Paras tuloksesi ${Number(data.best).toLocaleString("fi-FI")} pistettä on yhä voimassa.`;
+          }
           return "server";
+        }
+        if (r.status === 409 && data.code === "nick_taken") {
+          lastSaved = null;
+          return { taken: data.error };
         }
         store.serverError = data.error || "Tulosta ei voitu tallentaa yhteiseen tulostauluun.";
       } catch {
@@ -678,17 +716,22 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
 
   function boardEntries() {
-    if (store.mode === "server") return [...store.shared].sort(byScore);
+    if (store.mode === "server") return bestPerNick(store.shared);
     if (store.mode === "shared") {
       // tämän selaimen tulokset mukaan, jos ne eivät päässeet jaettuun tauluun
       const ids = new Set(store.shared.map(e => e.id));
-      return [...store.shared, ...loadLocal().filter(e => !ids.has(e.id))].sort(byScore);
+      return bestPerNick([...store.shared, ...loadLocal().filter(e => !ids.has(e.id))]);
     }
-    return loadLocal().sort(byScore);
+    return bestPerNick(loadLocal());
   }
 
   function renderBoard() {
     const list = boardEntries().slice(0, 10);
+    // korosta pelaajan oma rivi myös silloin, kun uusi tulos ei parantanut sitä
+    if (lastSaved && !list.some(e => e.id === lastSaved) && run?.nick) {
+      const own = list.find(e => nickKey(e.nick) === nickKey(run.nick));
+      if (own) lastSaved = own.id;
+    }
     const rows = $("boardRows");
     rows.replaceChildren();
     list.forEach((e, i) => {
@@ -707,8 +750,9 @@ tr.top td:nth-child(1) { color: var(--gold); }
     if (store.mode === "server") {
       $("boardInfo").textContent = store.serverError
         ? store.serverError + " Tulos tallentui tähän selaimeen."
-        : "Kymmenen parasta. Yhteinen kaikille pelaajille.";
+        : (store.notice ? store.notice + " " : "") + "Kymmenen parasta, yksi tulos per pelaaja.";
       store.serverError = null;
+      store.notice = null;
       return;
     }
     $("boardInfo").textContent = store.mode === "shared"
@@ -797,11 +841,20 @@ tr.top td:nth-child(1) { color: var(--gold); }
     e.preventDefault();
     const nick = $("nick").value.replace(/\s+/g, " ").trim();
     if (!nick) { $("nickErr").textContent = "Kirjoita nimimerkki, niin tulos tallentuu tulostauluun."; $("nick").focus(); return; }
-    saveNick(nick);
     $("saveBtn").disabled = true;
-    await saveScore(nick);
-    track("post_score", { score: run.final });
+    $("nickErr").textContent = "";
+    run.nick = nick;
+    const result = await saveScore(nick);
     $("saveBtn").disabled = false;
+    if (result && result.taken) {
+      // nimimerkki kuuluu toiselle selaimelle: pyydä toista nimeä
+      $("nickErr").textContent = result.taken;
+      $("nick").focus();
+      $("nick").select();
+      return;
+    }
+    saveNick(nick);
+    track("post_score", { score: run.final });
     showBoard(true);
   });
 
