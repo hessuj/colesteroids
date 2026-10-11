@@ -36,6 +36,7 @@
   --bad: #ff3030;      /* pahikset */
   --gold: #ffe100;     /* tähdet */
   --fb: #1877f2;       /* Facebookin jakonappi */
+  --shield: #50c8ff;   /* turvakaari */
   --display: "Bungee", "Arial Black", Impact, sans-serif;
   --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   color-scheme: dark;
@@ -51,6 +52,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font); overfl
 #hud { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: 16px; display: grid; gap: 6px; justify-items: end; pointer-events: none; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
 #hud .top { display: flex; align-items: baseline; gap: 18px; }
 #score { font-family: var(--display); font-size: 26px; letter-spacing: .02em; }
+#shieldLbl { font-size: 13px; font-weight: 600; color: var(--shield); }
 #levelLbl { font-family: var(--display); font-size: 16px; color: var(--gold); }
 .banner { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; pointer-events: none; text-align: center; padding: 16px; text-shadow: 0 2px 8px #000; }
 #bannerTitle { font-family: var(--display); font-size: clamp(40px, 10vw, 72px); color: var(--accent); line-height: 1; }
@@ -147,6 +149,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 <div id="hud" hidden>
   <div class="top"><span id="levelLbl">Kenttä 1</span><span id="timer">1:00</span><span id="score">0</span></div>
   <div class="health">Energia <div class="bar"><div id="healthFill"></div></div></div>
+  <div id="shieldLbl" hidden>Turvakaari 10 s</div>
 </div>
 
 <div id="levelBanner" class="banner" role="status" hidden>
@@ -162,6 +165,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
       <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0 11 L11 -4.4 L8.8 -8.8 L5.5 -11 L2.2 -8.8 L0 -4.4 L-2.2 -8.8 L-5.5 -11 L-8.8 -8.8 L-11 -4.4Z" fill="#ff69b4"/></svg><span>Liikuta sydäntä nuolinäppäimillä.</span>
       <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0 -10 L10 10 L-10 10Z" fill="#008000"/></svg><span>Hyvä lipoproteiini. Syö: pisteitä ja energiaa. Arvo kasvaa kenttä kentältä.</span>
       <svg width="22" height="22" viewBox="-11 -11 22 22"><circle r="10" fill="#ff0000"/></svg><span>Kolesteroliökkö. Törmäys vie sydämen energiaa, myöhemmissä kentissä enemmän.</span>
+      <svg width="22" height="22" viewBox="-11 -11 22 22"><g transform="rotate(-30)"><rect x="-10" y="-4.5" width="20" height="9" rx="4.5" fill="#29b6f6"/><path d="M-5.5 -4.5 H0 V4.5 H-5.5 A4.5 4.5 0 0 1 -5.5 -4.5Z" fill="#fff"/><path d="M-10 0 A4.5 4.5 0 0 1 -5.5 -4.5 H0 V4.5 H-5.5 A4.5 4.5 0 0 1 -10 0Z" fill="#fff"/></g></svg><span>Rosuvastatiini. Nappaa pilleri: turvakaari suojaa kolesterolilta 10 sekuntia.</span>
     </div>
     <p class="sub" id="rules">Jokainen kenttä kestää 60 sekuntia. Jos energiaa on jäljellä, pääset seuraavaan, vaikeampaan kenttään. Seiniin aukeaa välillä aukkoja, joista pääsee toiselle puolelle.</p>
     <div class="stack menu">
@@ -392,6 +396,12 @@ tr.top td:nth-child(1) { color: var(--gold); }
       greens: Math.max(10, 20 - 2 * (n - 1))
     };
   }
+  // Rosuvastatiini: pilleri antaa turvakaaren, jonka aikana kolesteroli ei satuta
+  const SHIELD_TIME = 10;              // s
+  const SHIELD_BLINK = 3;              // s ennen loppua kaari alkaa vilkkua
+  const PILL_FIRST = [10, 18];         // s kentän alusta, satunnainen väli
+  const PILL_EVERY = [18, 26];         // s seuraavaan pilleriin
+  const PILL_LIFE = 9;                 // s, katoaa jos ei napata
   // Seinäaukot: ensimmäinen 10 s kohdalla, sitten 15 s välein; välkkyy 2 s, auki 6 s
   const GAP_FIRST = 10, GAP_EVERY = 15, GAP_WARN = 2, GAP_OPEN = 6, GAP_ROWS = 3;
   const INVULNERABLE = 1.0;     // s, törmäyksen jälkeen
@@ -489,6 +499,13 @@ tr.top td:nth-child(1) { color: var(--gold); }
       // törmäys ökköön suojatilassa
       bump() { if (throttled("bump", 90)) return; tone({ type: "square", f0: 220, f1: 150, dur: 0.06, vol: 0.06 }); },
       gapWarn() { [0, 0.25, 0.5].forEach(d => tone({ type: "square", f0: 880, dur: 0.08, vol: 0.07, delay: d })); },
+      // pilleri napattu: kirkas nouseva sointu
+      shieldOn() { [784, 988, 1175, 1568].forEach((f, i) => tone({ type: "sine", f0: f, dur: 0.22, vol: 0.18, delay: i * 0.05 })); },
+      // turvakaari torjuu kolesterolin
+      deflect() { if (throttled("deflect", 80)) return; tone({ type: "triangle", f0: 1400, f1: 900, dur: 0.12, vol: 0.14 }); },
+      shieldTick() { tone({ type: "sine", f0: 1200, dur: 0.07, vol: 0.1 }); },
+      shieldOff() { tone({ type: "sine", f0: 900, f1: 300, dur: 0.35, vol: 0.16 }); },
+      pillAppear() { tone({ type: "sine", f0: 600, f1: 900, dur: 0.15, vol: 0.12 }); tone({ type: "sine", f0: 900, f1: 1200, dur: 0.15, vol: 0.1, delay: 0.12 }); },
       gapOpen() { noise({ dur: 0.6, vol: 0.25, f0: 300, f1: 3000, type: "bandpass", q: 2 }); },
       warp() {
         tone({ type: "sine", f0: 300, f1: 1200, dur: 0.25, vol: 0.2 });
@@ -657,7 +674,10 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
   function spawn(kind, cfg = run ? run.cfg : levelCfg(1), grow = true) {
     const p = freeSpot();
-    const b = kind === "pahis" ? makeBody("pahis", p.x, p.y, 25, C.Red, cfg.redSpeed) : makeBody("hyvis", p.x, p.y, 23, C.Green, 200);
+    let b;
+    if (kind === "pahis") b = makeBody("pahis", p.x, p.y, 25, C.Red, cfg.redSpeed);
+    else if (kind === "pilleri") { b = makeBody("pilleri", p.x, p.y, 24, "#fff", 45); b.life = PILL_LIFE; b.av = 0.8; }
+    else b = makeBody("hyvis", p.x, p.y, 23, C.Green, 200);
     if (grow) b.spawnT = 0;
     bodies.push(b);
   }
@@ -684,6 +704,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
     for (const b of bodies) {
       if (b.spawnT !== undefined) b.spawnT += dt;
+      if (b.life !== undefined && (b.life -= dt) <= 0) b.alive = false;
       if (b.brain) {
         b.brain.timer -= dt;
         if (b.brain.timer <= 0) { b.brain.timer += 3; b.brain.dir = Math.random() * Math.PI * 2; }
@@ -773,12 +794,19 @@ tr.top td:nth-child(1) { color: var(--gold); }
     if (!a.alive || !b.alive) return;
     const dx = b.x - a.x, dy = b.y - a.y, rr = a.r + b.r, d2 = dx * dx + dy * dy;
     if (d2 >= rr * rr) return;
+    // Pilleri leijuu muiden läpi; vain pelaaja voi napata sen
+    if (a.kind === "pilleri" || b.kind === "pilleri") {
+      const pill = a.kind === "pilleri" ? a : b, other = pill === a ? b : a;
+      if (other === player && state === "playing") takePill(pill);
+      return;
+    }
     // Pelaajan törmäykset: PelaajaTormasi
     if (state === "playing" && (a === player || b === player)) {
       const other = a === player ? b : a;
       if (other.kind === "hyvis") { eat(other); return; }
-      if (other.kind === "pahis" && run.invuln <= 0 && (other.spawnT === undefined || other.spawnT > 0.6)) { hurt(other); return; }
-      sfx.bump();
+      if (other.kind === "pahis" && run.shield > 0) sfx.deflect();          // turvakaari: ei vahinkoa, pelkkä pomppu
+      else if (other.kind === "pahis" && run.invuln <= 0 && (other.spawnT === undefined || other.spawnT > 0.6)) { hurt(other); return; }
+      else sfx.bump();
     }
     const d = Math.sqrt(d2) || 0.001;
     const nx = -dx / d, ny = -dy / d, pen = rr - d;
@@ -854,9 +882,41 @@ tr.top td:nth-child(1) { color: var(--gold); }
     level.gap = null;
   }
 
+  // ---------- Rosuvastatiini ja turvakaari ----------
+  function takePill(pill) {
+    pill.alive = false;
+    const fresh = run.shield <= 0;
+    run.shield = SHIELD_TIME;
+    run.shieldTick = SHIELD_BLINK;
+    sfx.shieldOn();
+    effects.push({ x: pill.x, y: pill.y, radius: 90, t: 0, dur: 0.4, color: "80,200,255", pop: true });
+    track("powerup", { level: run.level });
+    if (fresh && !run.shieldSeen) { run.shieldSeen = true; message("Turvakaari! Kolesteroli ei satuta 10 sekuntiin."); }
+  }
+  function updateShieldAndPills(dt) {
+    if (run.shield > 0) {
+      run.shield = Math.max(0, run.shield - dt);
+      // tikitys viimeisillä sekunneilla
+      if (run.shield > 0 && run.shield <= run.shieldTick) { run.shieldTick -= 1; sfx.shieldTick(); }
+      if (run.shield === 0) { sfx.shieldOff(); run.invuln = Math.max(run.invuln, 0.8); }
+    }
+    const lbl = $("shieldLbl");
+    lbl.hidden = run.shield <= 0;
+    if (run.shield > 0) lbl.textContent = `Turvakaari ${Math.ceil(run.shield)} s`;
+    if (run.elapsed >= run.pillNext) {
+      run.pillNext += rand(PILL_EVERY[0], PILL_EVERY[1]);
+      if (!bodies.some(b => b.kind === "pilleri" && b.alive)) {
+        spawn("pilleri");
+        sfx.pillAppear();
+        if (!run.pillSeen) { run.pillSeen = true; message("Rosuvastatiini ilmestyi! Nappaa pilleri, niin saat turvakaaren."); }
+      }
+    }
+  }
+
   function updateRun(dt) {
     run.elapsed = Math.min(GAME_TIME, run.elapsed + dt);
     run.invuln = Math.max(0, run.invuln - dt);
+    updateShieldAndPills(dt);
     const left = Math.ceil(GAME_TIME - run.elapsed);
     if (left !== run.leftShown) {
       run.leftShown = left;
@@ -921,7 +981,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     music.start();
     store.shareId = null;
     track("game_start");
-    run = { level: 1, health: MAX_HEALTH, eaten: 0, banked: 0, levels: [] };
+    run = { level: 1, health: MAX_HEALTH, eaten: 0, banked: 0, levels: [], shield: 0 };
     paused = false;
     show(null);
     $("levelBanner").hidden = true;
@@ -932,7 +992,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
   function startLevel(n) {
     Object.assign(run, {
       level: n, cfg: levelCfg(n), levelEaten: 0, elapsed: 0, nextExtra: EXTRA_PAHIS_EVERY,
-      gapNext: GAP_FIRST, invuln: n > 1 ? 1.5 : 0, shown: -1, leftShown: -1
+      gapNext: GAP_FIRST, invuln: n > 1 ? 1.5 : 0, shown: -1, leftShown: -1,
+      pillNext: rand(PILL_FIRST[0], PILL_FIRST[1])
     });
     buildWorld(true, n);
     state = "playing";
@@ -1308,11 +1369,13 @@ tr.top td:nth-child(1) { color: var(--gold); }
       if (b.spawnT !== undefined && b.spawnT < 0.6) ctx.scale(b.spawnT / 0.6, b.spawnT / 0.6);
       ctx.fillStyle = b.color;
       ctx.beginPath();
+      if (b.kind === "pilleri") { drawPill(b); ctx.restore(); continue; }
       if (b.kind === "pahis") ctx.arc(0, 0, 25, 0, Math.PI * 2);
       else poly(b.kind === "pelaaja" ? HEART : TRIANGLE, 50);
       ctx.fill();
       ctx.restore();
     }
+    drawShield();
     for (const e of effects) {
       const k = e.t / e.dur;
       ctx.beginPath();
@@ -1320,6 +1383,41 @@ tr.top td:nth-child(1) { color: var(--gold); }
       if (e.pop) { ctx.strokeStyle = `rgba(${e.color},${1 - k})`; ctx.lineWidth = 6; ctx.stroke(); }
       else { ctx.fillStyle = `rgba(${e.color},${0.55 * (1 - k)})`; ctx.fill(); ctx.strokeStyle = `rgba(255,255,160,${1 - k})`; ctx.lineWidth = 8; ctx.stroke(); }
     }
+  }
+  // Rosuvastatiini: valkoinen ja sininen kapseli, vilkkuu ennen katoamista
+  function drawPill(b) {
+    if (b.life < 2.5 && Math.floor(b.life * 8) % 2) return;
+    const w = 62, h = 28, r = h / 2;
+    ctx.shadowColor = "rgba(80,200,255,0.8)";
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + r, -r); ctx.lineTo(w / 2 - r, -r); ctx.arc(w / 2 - r, 0, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(-w / 2 + r, r); ctx.arc(-w / 2 + r, 0, r, Math.PI / 2, Math.PI * 1.5);
+    ctx.fillStyle = "#29b6f6";
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(0, -r); ctx.lineTo(-w / 2 + r, -r); ctx.arc(-w / 2 + r, 0, r, -Math.PI / 2, -Math.PI * 1.5, true);
+    ctx.lineTo(0, r); ctx.closePath();
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }
+  // Turvakaari pelaajan ympärillä; vilkkuu, kun aika alkaa loppua
+  function drawShield() {
+    if (!player || !player.alive || !run || !(run.shield > 0)) return;
+    const t = performance.now() / 1000;
+    if (run.shield < SHIELD_BLINK && Math.floor(t * (run.shield < 1.2 ? 12 : 6)) % 2) return;
+    const rad = 46 + 3 * Math.sin(t * 6);
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, rad, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(80,200,255,0.14)";
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(80,200,255,0.9)";
+    ctx.shadowColor = "rgba(80,200,255,0.9)";
+    ctx.shadowBlur = 20;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
   function drawGap() {
     const g = level.gap;

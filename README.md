@@ -15,6 +15,7 @@ Colesteroids on selaimessa pelattava fysiikkapeli. Ohjaat vaaleanpunaista sydän
 | 💗 Sydän | Sinä. Nuolinäppäin lyö sydäntä haluamaasi suuntaan, painovoima vetää alas. |
 | 🟩 Vihreä kolmio | Hyvä lipoproteiini. Syö: pisteitä ja +10 % energiaa. |
 | 🔴 Punainen pallo | Kolesteroliökkö. Törmäys räjäyttää sen ja vie energiaa. |
+| 💊 Rosuvastatiini | Pilleri, joka ilmestyy kenttään silloin tällöin ja katoaa 9 sekunnin jälkeen. Nappaa se, niin saat 10 sekunniksi turvakaaren: kolesteroliökköihin voi törmätä ilman energian menetystä. Kaari vilkkuu ja tikittää viimeiset 3 sekuntia. |
 
 - Jokainen kenttä kestää 60 sekuntia. Jos energiaa on jäljellä, pääset seuraavaan kenttään ja saat +20 % energiaa.
 - Peli päättyy, kun sydämen energia loppuu. Tulos on kaikkien kenttien pisteet yhteensä.
