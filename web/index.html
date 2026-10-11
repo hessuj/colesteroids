@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Colesteroids OG+</title>
 <!-- Colesteroids, selainversio. © 2026 Hessu Järvinen. Alkuperäinen idea ja peli: Hessu Järvinen. Lisenssi: MIT, katso LICENSE. -->
-<meta name="description" content="Syö hyvät lipoproteiinit, väistä kolesteroliökköjä ja kerää pisteitä 60 sekunnissa. Pystytkö parempaan?">
+<meta name="description" content="Syö hyvät lipoproteiinit, väistä kolesteroliökköjä ja selviä kenttä kentältä vaikeammaksi käyvästä pelistä. Kuinka pitkälle pääset?">
 <meta name="author" content="Hessu Järvinen">
 <link rel="canonical" href="https://hessujarvinen.com/softa/colesteroids">
 <!-- Open Graph: Facebook hakee jaon otsikon, kuvauksen ja kuvan näistä -->
@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="hessujarvinen.com">
 <meta property="og:locale" content="fi_FI">
 <meta property="og:title" content="Colesteroids OG+ – pelaa selaimessa">
-<meta property="og:description" content="Syö hyvät lipoproteiinit, väistä kolesteroliökköjä ja kerää pisteitä 60 sekunnissa. Pystytkö parempaan?">
+<meta property="og:description" content="Syö hyvät lipoproteiinit, väistä kolesteroliökköjä ja selviä kenttä kentältä vaikeammaksi käyvästä pelistä. Kuinka pitkälle pääset?">
 <meta property="og:image" content="https://hessujarvinen.com/softa/colesteroids/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -51,6 +51,10 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font); overfl
 #hud { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: 16px; display: grid; gap: 6px; justify-items: end; pointer-events: none; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
 #hud .top { display: flex; align-items: baseline; gap: 18px; }
 #score { font-family: var(--display); font-size: 26px; letter-spacing: .02em; }
+#levelLbl { font-family: var(--display); font-size: 16px; color: var(--gold); }
+.banner { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; pointer-events: none; text-align: center; padding: 16px; text-shadow: 0 2px 8px #000; }
+#bannerTitle { font-family: var(--display); font-size: clamp(40px, 10vw, 72px); color: var(--accent); line-height: 1; }
+#bannerSub { margin: 0; font-size: 17px; color: var(--fg); }
 #timer { font-family: var(--display); font-size: 20px; color: var(--muted); }
 #timer.low { color: var(--bad); animation: tick 1s steps(2) infinite; }
 @keyframes tick { 50% { opacity: .45; } }
@@ -107,8 +111,9 @@ th:nth-child(2), td:nth-child(2) { text-align: left; }
 td:nth-child(2) { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 td:nth-child(1) { color: var(--muted); width: 2ch; }
 td.pts { font-weight: 600; text-align: right; }
-th:nth-child(3), th:nth-child(4) { text-align: right; }
-td:nth-child(4) { text-align: right; color: var(--muted); }
+th:nth-child(n+3) { text-align: right; }
+td:nth-child(3) { text-align: right; color: var(--gold); }
+td:nth-child(5) { text-align: right; color: var(--muted); }
 tr.me td { color: var(--accent); }
 tr.top td:nth-child(1) { color: var(--gold); }
 .empty { color: var(--muted); font-size: 15px; padding: 18px 0; }
@@ -136,8 +141,13 @@ tr.top td:nth-child(1) { color: var(--gold); }
 <div id="messages" aria-live="polite"></div>
 
 <div id="hud" hidden>
-  <div class="top"><span id="timer">1:00</span><span id="score">0</span></div>
+  <div class="top"><span id="levelLbl">Kenttä 1</span><span id="timer">1:00</span><span id="score">0</span></div>
   <div class="health">Energia <div class="bar"><div id="healthFill"></div></div></div>
+</div>
+
+<div id="levelBanner" class="banner" role="status" hidden>
+  <div id="bannerTitle">Kenttä 2</div>
+  <p id="bannerSub"></p>
 </div>
 
 <!-- Alkuvalikko -->
@@ -146,10 +156,10 @@ tr.top td:nth-child(1) { color: var(--gold); }
     <h1><span class="c">Coles</span>teroids <span class="og">OG+</span></h1>
     <div class="legend">
       <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0 11 L11 -4.4 L8.8 -8.8 L5.5 -11 L2.2 -8.8 L0 -4.4 L-2.2 -8.8 L-5.5 -11 L-8.8 -8.8 L-11 -4.4Z" fill="#ff69b4"/></svg><span>Liikuta sydäntä nuolinäppäimillä.</span>
-      <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0 -10 L10 10 L-10 10Z" fill="#008000"/></svg><span>Hyvä lipoproteiini. Syö: +100 pistettä, sydän vahvistuu.</span>
-      <svg width="22" height="22" viewBox="-11 -11 22 22"><circle r="10" fill="#ff0000"/></svg><span>Kolesteroliökkö. Törmäys vie sydämen energiaa.</span>
+      <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0 -10 L10 10 L-10 10Z" fill="#008000"/></svg><span>Hyvä lipoproteiini. Syö: pisteitä ja energiaa. Arvo kasvaa kenttä kentältä.</span>
+      <svg width="22" height="22" viewBox="-11 -11 22 22"><circle r="10" fill="#ff0000"/></svg><span>Kolesteroliökkö. Törmäys vie sydämen energiaa, myöhemmissä kentissä enemmän.</span>
     </div>
-    <p class="sub" id="rules">Aikaa on 60 sekuntia. Peli päättyy, kun aika loppuu tai energia on nolla.</p>
+    <p class="sub" id="rules">Jokainen kenttä kestää 60 sekuntia. Jos energiaa on jäljellä, pääset seuraavaan, vaikeampaan kenttään. Seiniin aukeaa välillä aukkoja, joista pääsee toiselle puolelle.</p>
     <div class="stack menu">
       <button id="startBtn" class="primary">Aloita peli</button>
       <button id="scoresBtn">Tulostaulu</button>
@@ -210,7 +220,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     <p class="sub" id="boardInfo"></p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>#</th><th>Nimimerkki</th><th>Pisteet</th><th>Aika</th></tr></thead>
+        <thead><tr><th>#</th><th>Nimimerkki</th><th>Kenttä</th><th>Pisteet</th><th>Aika</th></tr></thead>
         <tbody id="boardRows"></tbody>
       </table>
       <div class="empty" id="boardEmpty" hidden>Ei vielä tuloksia. Pelaa ensimmäinen!</div>
@@ -288,6 +298,107 @@ tr.top td:nth-child(1) { color: var(--gold); }
     "=   *             *         =",
     "============================="
   ];
+  // Kentät: 1 on alkuperäinen vuoden 2019 kenttä, muut OG+-versiossa lisättyjä.
+  // Viidennen jälkeen layoutit kiertävät alusta, mutta vaikeus kasvaa edelleen.
+  const LAYOUTS = [
+    { name: "Alkuperäinen", map: KENTTA },
+    { name: "Portaat", map: [
+      "                             ",
+      "=                           =",
+      "=                           =",
+      "=  ===                 ===  =",
+      "=             *             =",
+      "=                           =",
+      "=        ===       ===      =",
+      "=                           =",
+      "=                          *=",
+      "=    ===       ===          =",
+      "=                           =",
+      "=                           =",
+      "=          ===           ====",
+      "= *                         =",
+      "=                           =",
+      "=      ===        ===       =",
+      "=             *             =",
+      "=                           =",
+      "=  ===                ===   =",
+      "=         *               * =",
+      "=                           =",
+      "============================="
+    ] },
+    { name: "Käytävät", map: [
+      "                             ",
+      "=                           =",
+      "=    *                      =",
+      "=                   *       =",
+      "=                           =",
+      "==========   ================",
+      "=                           =",
+      "=             *             =",
+      "=                        *  =",
+      "=                           =",
+      "===================   =======",
+      "=                           =",
+      "=       *                   =",
+      "=                    *      =",
+      "=                           =",
+      "=======   ===========   =====",
+      "=                           =",
+      "=                           =",
+      "=   *                       =",
+      "=                       *   =",
+      "=                           =",
+      "============================="
+    ] },
+    { name: "Kammiot", map: [
+      "                             ",
+      "=                           =",
+      "=  ========       ========  =",
+      "=  =      =   *   =      =  =",
+      "=  =  *           =      =  =",
+      "=  =      =          *   =  =",
+      "=  =      =       =      =  =",
+      "=  ===  ===       ===  ===  =",
+      "=                           =",
+      "=            ===            =",
+      "=                           =",
+      "=  ===  ===       ===  ===  =",
+      "=  =      =       =      =  =",
+      "=  =      =           *  =  =",
+      "=  =   *          =      =  =",
+      "=  =      =   *   =      =  =",
+      "=  ========       ========  =",
+      "=                           =",
+      "=                           =",
+      "= *                       * =",
+      "=                           =",
+      "============================="
+    ] },
+    { name: "Sokkelo", map: [
+      "                             ",
+      "=                           =",
+      "=    =        *        =    =",
+      "= *  =                 =  * =",
+      "=    =   ===========   =    =",
+      "=    =                 =    =",
+      "=    =        =        =    =",
+      "=    =      * =  *     =    =",
+      "==== =        =        = ====",
+      "=             =             =",
+      "=             =             =",
+      "=  *        =====        *  =",
+      "=        =         =        =",
+      "=        =         =        =",
+      "=======  =         =  =======",
+      "=        =    *    =        =",
+      "=        = ==   == =        =",
+      "=        =         =        =",
+      "=     *               *     =",
+      "=                           =",
+      "=                           =",
+      "============================="
+    ] }
+  ];
   const C = {
     HotPink: "rgb(255,105,180)", DarkBrown: "rgb(92,64,51)", Yellow: "rgb(255,255,0)",
     Red: "rgb(255,0,0)", Green: "rgb(0,128,0)", Gray: "rgb(128,128,128)", Black: "#000"
@@ -297,12 +408,23 @@ tr.top td:nth-child(1) { color: var(--gold); }
   const DEF_REST = 0.5, FRICTION = 0.4;
 
   // ---------- Pelimekaniikka (alkuperäisten TODO-kommenttien mukaan) ----------
-  const GAME_TIME = 60;         // s, pelin kesto
+  const GAME_TIME = 60;         // s, yhden kentän kesto
   const MAX_HEALTH = 100;
-  const PAHIS_DAMAGE = 20;      // törmäys kolesteroliökköön heikentää sydäntä
+  const LEVEL_BONUS = 20;       // energiaa kentän läpäisystä
   const HYVIS_HEAL = 10;        // hyvän lipoproteiinin syöminen vahvistaa
-  const HYVIS_POINTS = 100;
   const POINTS_PER_SECOND = 10;
+  // Kentän vaikeus (n = 1, 2, 3, ...). Sama kaava on palvelimella (scores.php).
+  function levelCfg(n) {
+    return {
+      reds: 20 + 4 * (n - 1),
+      redSpeed: 70 + 15 * (n - 1),
+      damage: n <= 2 ? 25 : n <= 4 ? 30 : 35,
+      greenPoints: 100 + 50 * (n - 1),
+      greens: Math.max(10, 20 - 2 * (n - 1))
+    };
+  }
+  // Seinäaukot: ensimmäinen 10 s kohdalla, sitten 15 s välein; välkkyy 2 s, auki 6 s
+  const GAP_FIRST = 10, GAP_EVERY = 15, GAP_WARN = 2, GAP_OPEN = 6, GAP_ROWS = 3;
   const INVULNERABLE = 1.0;     // s, törmäyksen jälkeen
   const RESPAWN_DELAY = 3;      // s
   const EXTRA_PAHIS_EVERY = 15; // s, peli vaikeutuu
@@ -315,38 +437,49 @@ tr.top td:nth-child(1) { color: var(--gold); }
   const msgEl = $("messages");
 
   let level, statics, bodies, effects, timers, player;
-  let state = "menu";   // menu | playing | dying | over | board
+  let state = "menu";   // menu | playing | between | dying | over | board
   let paused = false;
-  let run = null;       // { health, eaten, elapsed, nextExtra, invuln }
+  let run = null;       // { level, cfg, health, eaten, levelEaten, banked, levels, elapsed, ... }
 
   // ---------- Maailma ----------
-  function buildWorld(withPlayer) {
+  function buildWorld(withPlayer, n = 1) {
     statics = []; bodies = []; effects = []; timers = [];
-    const rows = KENTTA.length, cols = KENTTA[0].length;
+    const map = LAYOUTS[(n - 1) % LAYOUTS.length].map;
+    const cfg = levelCfg(n);
+    const rows = map.length, cols = map[0].length;
     const W = cols * RUUDUN_LEVEYS, H = rows * RUUDUN_KORKEUS;
-    level = { left: -W / 2, right: W / 2, bottom: -H / 2, top: H / 2, width: W, height: H };
+    level = { left: -W / 2, right: W / 2, bottom: -H / 2, top: H / 2, width: W, height: H, rows, cols, gap: null };
     for (let y = rows - 1; y >= 0; y--) {
       for (let x = 0; x < cols; x++) {
-        const ch = KENTTA[y][x];
+        const ch = map[y][x];
         const px = level.left + x * RUUDUN_LEVEYS + RUUDUN_LEVEYS / 2;
         const py = level.top - y * RUUDUN_KORKEUS - RUUDUN_KORKEUS / 2;
-        if (ch === "=") statics.push({ x: px, y: py, hw: 25, hh: 25, color: C.DarkBrown, rest: DEF_REST });
-        if (ch === "*") statics.push({ x: px, y: py, hw: 12.5, hh: 12.5, color: C.Yellow, rest: DEF_REST });
+        const wall = x === 0 || x === cols - 1;
+        if (ch === "=") statics.push({ x: px, y: py, hw: 25, hh: 25, color: C.DarkBrown, rest: DEF_REST, row: y, wall });
+        if (ch === "*") statics.push({ x: px, y: py, hw: 12.5, hh: 12.5, color: C.Yellow, rest: DEF_REST, row: y });
       }
     }
-    for (let i = 0; i < 20; i++) { const a = rand(15, 80); bodies.push(makeBody("pahis", a, a, 25, C.Red, 70)); }
-    for (let i = 0; i < 20; i++) { const a = rand(10, 100); bodies.push(makeBody("hyvis", a, a, 23, C.Green, 200)); }
+    const t = level.width / 10;
+    level.border = t;
+    statics.push({ x: level.left - t / 2, y: 0, hw: t / 2, hh: level.height / 2, color: C.Gray, rest: 1, side: true });
+    statics.push({ x: level.right + t / 2, y: 0, hw: t / 2, hh: level.height / 2, color: C.Gray, rest: 1, side: true });
+    statics.push({ x: 0, y: level.top + t / 2, hw: level.width / 2 + t, hh: t / 2, color: C.Gray, rest: 1 });
+    statics.push({ x: 0, y: level.bottom - t / 2, hw: level.width / 2 + t, hh: t / 2, color: C.Gray, rest: 1 });
+
     player = null;
     if (withPlayer) {
       player = makeBody("pelaaja", 0, level.bottom + 200, 23, C.HotPink, 0);
       bodies.push(player);
       hit(player, 300, 100);
     }
-    const t = level.width / 10;
-    statics.push({ x: level.left - t / 2, y: 0, hw: t / 2, hh: level.height / 2, color: C.Gray, rest: 1 });
-    statics.push({ x: level.right + t / 2, y: 0, hw: t / 2, hh: level.height / 2, color: C.Gray, rest: 1 });
-    statics.push({ x: 0, y: level.top + t / 2, hw: level.width / 2 + t, hh: t / 2, color: C.Gray, rest: 1 });
-    statics.push({ x: 0, y: level.bottom - t / 2, hw: level.width / 2 + t, hh: t / 2, color: C.Gray, rest: 1 });
+    if (n === 1) {
+      // Kenttä 1 kuten alkuperäisessä: ökköt syntyvät keskelle samalle lävistäjälle
+      for (let i = 0; i < cfg.reds; i++) { const a = rand(15, 80); bodies.push(makeBody("pahis", a, a, 25, C.Red, cfg.redSpeed)); }
+      for (let i = 0; i < cfg.greens; i++) { const a = rand(10, 100); bodies.push(makeBody("hyvis", a, a, 23, C.Green, 200)); }
+    } else {
+      for (let i = 0; i < cfg.reds; i++) spawn("pahis", cfg, false);
+      for (let i = 0; i < cfg.greens; i++) spawn("hyvis", cfg, false);
+    }
   }
 
   function makeBody(kind, x, y, r, color, speed) {
@@ -367,10 +500,10 @@ tr.top td:nth-child(1) { color: var(--gold); }
     }
     return { x: 0, y: 0 };
   }
-  function spawn(kind) {
+  function spawn(kind, cfg = run ? run.cfg : levelCfg(1), grow = true) {
     const p = freeSpot();
-    const b = kind === "pahis" ? makeBody("pahis", p.x, p.y, 25, C.Red, 70) : makeBody("hyvis", p.x, p.y, 23, C.Green, 200);
-    b.spawnT = 0;
+    const b = kind === "pahis" ? makeBody("pahis", p.x, p.y, 25, C.Red, cfg.redSpeed) : makeBody("hyvis", p.x, p.y, 23, C.Green, 200);
+    if (grow) b.spawnT = 0;
     bodies.push(b);
   }
   function later(sec, fn) { timers.push({ t: sec, fn }); }
@@ -404,6 +537,9 @@ tr.top td:nth-child(1) { color: var(--gold); }
       }
       b.vy += GRAVITY * dt;
       b.x += b.vx * dt; b.y += b.vy * dt;
+      // Seinäaukosta ulos lentänyt tulee sisään toiselta puolelta
+      if (b.x < level.left - b.r) b.x += level.width + 2 * b.r;
+      else if (b.x > level.right + b.r) b.x -= level.width + 2 * b.r;
       b.angle += b.av * dt;
       b.av *= 0.995;
     }
@@ -438,8 +574,13 @@ tr.top td:nth-child(1) { color: var(--gold); }
     if (other) { other.vx -= jt * tx; other.vy -= jt * ty; other.av += 2 * jt / other.r; }
   }
 
+  function inOpenGap(y) {
+    const g = level.gap;
+    return g && g.phase === "open" && y < g.yTop && y > g.yBottom;
+  }
   function collideStatic(b, s) {
-    if (!b.alive) return;
+    if (!b.alive || s.off) return;
+    if (s.side && inOpenGap(b.y)) return;
     const cx = Math.max(s.x - s.hw, Math.min(b.x, s.x + s.hw));
     const cy = Math.max(s.y - s.hh, Math.min(b.y, s.y + s.hh));
     const dx = b.x - cx, dy = b.y - cy, d2 = dx * dx + dy * dy;
@@ -479,6 +620,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
   function eat(h) {
     h.alive = false;
     run.eaten++;
+    run.levelEaten++;
     run.health = Math.min(MAX_HEALTH, run.health + HYVIS_HEAL);
     effects.push({ x: h.x, y: h.y, radius: 70, t: 0, dur: 0.3, color: "0,200,60", pop: true });
     later(RESPAWN_DELAY, () => state === "playing" && spawn("hyvis"));
@@ -486,14 +628,54 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
   function hurt(p) {
     p.alive = false;
-    run.health = Math.max(0, run.health - PAHIS_DAMAGE);
+    run.health = Math.max(0, run.health - run.cfg.damage);
     run.invuln = INVULNERABLE;
     explode(p.x, p.y, p.r * 6, "255,140,0");
     later(RESPAWN_DELAY, () => state === "playing" && spawn("pahis"));
     updateHud();
     if (run.health <= 0) die();
   }
-  function score() { return run.eaten * HYVIS_POINTS + Math.floor(run.elapsed) * POINTS_PER_SECOND; }
+  function score() {
+    return run.banked + run.levelEaten * run.cfg.greenPoints + Math.floor(run.elapsed) * POINTS_PER_SECOND;
+  }
+
+  // ---------- Seinäaukot ----------
+  function updateGap(dt) {
+    const g = level.gap;
+    if (!g) {
+      if (run.elapsed >= run.gapNext) startGap();
+      return;
+    }
+    g.t += dt;
+    if (g.phase === "warn" && g.t >= GAP_WARN) { g.phase = "open"; g.t = 0; setGapBlocks(true); }
+    else if (g.phase === "open" && g.t >= GAP_OPEN) closeGap();
+  }
+  function startGap() {
+    run.gapNext += GAP_EVERY;
+    const row = 2 + Math.floor(Math.random() * (level.rows - 3 - GAP_ROWS - 1));
+    level.gap = {
+      row, phase: "warn", t: 0,
+      yTop: level.top - row * RUUDUN_KORKEUS,
+      yBottom: level.top - (row + GAP_ROWS) * RUUDUN_KORKEUS
+    };
+    if (!run.gapSeen) { run.gapSeen = true; message("Seinään aukeaa aukko! Lennä läpi toiselle puolelle."); }
+  }
+  function setGapBlocks(open) {
+    const g = level.gap;
+    for (const s of statics) if (s.wall && s.row >= g.row && s.row < g.row + GAP_ROWS) s.off = open;
+  }
+  function closeGap() {
+    const g = level.gap;
+    // aukon kohdalla seinän ulkopuolella olevat palaavat kentälle
+    for (const b of bodies) {
+      if (b.y < g.yTop + b.r && b.y > g.yBottom - b.r && Math.abs(b.x) > level.right - 60) {
+        b.x = Math.sign(b.x) * (level.right - 90);
+        b.vx = -Math.sign(b.x) * Math.abs(b.vx) * 0.5;
+      }
+    }
+    setGapBlocks(false);
+    level.gap = null;
+  }
 
   function updateRun(dt) {
     run.elapsed = Math.min(GAME_TIME, run.elapsed + dt);
@@ -504,38 +686,48 @@ tr.top td:nth-child(1) { color: var(--gold); }
       $("timer").textContent = fmtTime(left);
       $("timer").classList.toggle("low", left <= 10);
     }
-    if (run.elapsed >= GAME_TIME) { timeUp(); return; }
+    if (run.elapsed >= GAME_TIME) { levelComplete(); return; }
+    updateGap(dt);
     if (run.elapsed >= run.nextExtra) { run.nextExtra += EXTRA_PAHIS_EVERY; spawn("pahis"); message("Kolesteroli lisääntyy!"); }
     const s = score();
     if (s !== run.shown) { run.shown = s; $("score").textContent = s.toLocaleString("fi-FI"); }
   }
   function updateHud() {
+    $("levelLbl").textContent = "Kenttä " + run.level;
     const pct = Math.max(0, run.health) / MAX_HEALTH * 100;
     $("healthFill").style.width = pct + "%";
     $("healthFill").classList.toggle("low", pct <= 40);
     $("score").textContent = score().toLocaleString("fi-FI");
   }
 
-  // Peli päättyy, kun energia loppuu...
+  // Kenttä läpäisty: energiaa lisää ja seuraavaan, vaikeampaan kenttään
+  function levelComplete() {
+    state = "between";
+    run.levels.push({ eaten: run.levelEaten, seconds: GAME_TIME });
+    run.banked += run.levelEaten * run.cfg.greenPoints + GAME_TIME * POINTS_PER_SECOND;
+    run.levelEaten = 0;
+    run.elapsed = 0;
+    run.health = Math.min(MAX_HEALTH, run.health + LEVEL_BONUS);
+    if (level.gap) closeGap();
+    updateHud();
+    const next = run.level + 1;
+    track("level_up", { level: next });
+    $("bannerTitle").textContent = "Kenttä " + next;
+    $("bannerSub").textContent = `Kenttä ${run.level} läpäisty · +${LEVEL_BONUS} % energiaa · ${LAYOUTS[(next - 1) % LAYOUTS.length].name}`;
+    $("levelBanner").hidden = false;
+    later(2.8, () => { $("levelBanner").hidden = true; startLevel(next); });
+  }
+
+  // Peli päättyy, kun energia loppuu
   function die() {
     state = "dying";
     run.reason = "energy";
     player.alive = false;
     explode(player.x, player.y, 260, "255,105,180");
+    run.levels.push({ eaten: run.levelEaten, seconds: Math.floor(run.elapsed) });
     run.final = score();
-    run.seconds = Math.floor(run.elapsed);
-    track("game_end", { reason: "energy", score: run.final, eaten: run.eaten, seconds: run.seconds });
-    setTimeout(showGameOver, 1200);
-  }
-  // ...tai kun aika loppuu
-  function timeUp() {
-    state = "dying";
-    run.reason = "time";
-    run.final = score();
-    run.seconds = GAME_TIME;
-    track("game_end", { reason: "time", score: run.final, eaten: run.eaten, seconds: run.seconds });
-    $("score").textContent = run.final.toLocaleString("fi-FI");
-    message("Aika loppui!");
+    run.seconds = run.levels.reduce((a, l) => a + l.seconds, 0);
+    track("game_end", { level: run.level, score: run.final, eaten: run.eaten, seconds: run.seconds });
     setTimeout(showGameOver, 1200);
   }
 
@@ -545,17 +737,27 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
   function startGame() {
     track("game_start");
-    buildWorld(true);
-    run = { health: MAX_HEALTH, eaten: 0, elapsed: 0, nextExtra: EXTRA_PAHIS_EVERY, invuln: 0, shown: -1, leftShown: -1 };
-    state = "playing"; paused = false;
+    run = { level: 1, health: MAX_HEALTH, eaten: 0, banked: 0, levels: [] };
+    paused = false;
     show(null);
+    $("levelBanner").hidden = true;
     $("hud").hidden = false;
-    updateHud();
+    startLevel(1);
     canvas.focus?.();
+  }
+  function startLevel(n) {
+    Object.assign(run, {
+      level: n, cfg: levelCfg(n), levelEaten: 0, elapsed: 0, nextExtra: EXTRA_PAHIS_EVERY,
+      gapNext: GAP_FIRST, invuln: n > 1 ? 1.5 : 0, shown: -1, leftShown: -1
+    });
+    buildWorld(true, n);
+    state = "playing";
+    updateHud();
   }
   function toMenu() {
     buildWorld(false);
     state = "menu"; paused = false;
+    $("levelBanner").hidden = true;
     $("hud").hidden = true;
     show("menu");
     $("startBtn").focus();
@@ -567,11 +769,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
     state = "over";
     $("hud").hidden = true;
     $("finalScore").textContent = run.final.toLocaleString("fi-FI");
-    const outOfTime = run.reason === "time";
-    $("overTitle").textContent = outOfTime ? "Aika loppui" : "Energia loppui";
-    $("finalInfo").textContent = outOfTime
-      ? `${run.eaten} hyvistä syöty · sydämessä energiaa jäljellä ${Math.round(run.health)} %`
-      : `${run.eaten} hyvistä syöty · kolesteroli pysäytti sydämen ajassa ${fmtTime(run.seconds)}`;
+    $("overTitle").textContent = "Energia loppui";
+    $("finalInfo").textContent = `Pääsit kenttään ${run.level} · ${run.eaten} hyvistä syöty · peliaika ${fmtTime(run.seconds)}`;
     $("nickErr").textContent = "";
     $("nick").value = loadNick();
     show("over");
@@ -673,14 +872,14 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
 
   async function saveScore(nick) {
-    const entry = { id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36), nick, score: run.final, seconds: run.seconds, eaten: run.eaten, at: Date.now() };
+    const entry = { id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36), nick, score: run.final, seconds: run.seconds, eaten: run.eaten, level: run.level, at: Date.now() };
     lastSaved = entry.id;
     if (store.mode === "server") {
       try {
         const r = await fetch(SCORES_API, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ nick, score: entry.score, seconds: entry.seconds, eaten: entry.eaten, token: browserToken() })
+          body: JSON.stringify({ nick, score: entry.score, levels: run.levels, token: browserToken() })
         });
         const data = await r.json().catch(() => ({}));
         if (r.ok && data.ok) {
@@ -738,10 +937,10 @@ tr.top td:nth-child(1) { color: var(--gold); }
       const tr = document.createElement("tr");
       if (e.id === lastSaved) tr.className = "me";
       else if (i === 0) tr.className = "top";
-      [String(i + 1), e.nick, e.score.toLocaleString("fi-FI"), fmtTime(e.seconds)].forEach((txt, k) => {
+      [String(i + 1), e.nick, String(e.level || 1), e.score.toLocaleString("fi-FI"), fmtTime(e.seconds)].forEach((txt, k) => {
         const td = document.createElement("td");
         td.textContent = txt;
-        if (k === 2) td.className = "pts";
+        if (k === 3) td.className = "pts";
         tr.appendChild(td);
       });
       rows.appendChild(tr);
@@ -766,10 +965,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
   const GAME_URL = "https://hessujarvinen.com/softa/colesteroids";
   function shareText() {
     const pts = run.final.toLocaleString("fi-FI");
-    const end = run.reason === "time"
-      ? `Sydän sykki koko ${GAME_TIME} sekuntia ja energiaa jäi ${Math.round(run.health)} %.`
-      : `Kolesteroli pysäytti sydämeni ajassa ${fmtTime(run.seconds)}.`;
-    return `Sain ${pts} pistettä Colesteroids OG+ -pelissä! 💗 Söin ${run.eaten} hyvää lipoproteiinia ja väistelin kolesteroliökköjä. ${end} Pystytkö parempaan?\n\n${GAME_URL}\n#ColesteroidsOG`;
+    return `Pääsin kenttään ${run.level} ja sain ${pts} pistettä Colesteroids OG+ -pelissä! 💗 Söin ${run.eaten} hyvää lipoproteiinia ja väistelin kolesteroliökköjä ${fmtTime(run.seconds)} ajan. Pystytkö parempaan?\n\n${GAME_URL}\n#ColesteroidsOG`;
   }
   function prepareShare(fromGame) {
     const show = fromGame && run && run.final != null;
@@ -895,8 +1091,14 @@ tr.top td:nth-child(1) { color: var(--gold); }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const zoom = Math.min(cw / level.width, ch / level.height) * dpr;
     ctx.setTransform(zoom, 0, 0, -zoom, canvas.width / 2, canvas.height / 2);
-    for (const s of statics) { ctx.fillStyle = s.color; ctx.fillRect(s.x - s.hw, s.y - s.hh, s.hw * 2, s.hh * 2); }
-    for (const b of bodies) {
+    for (const s of statics) {
+      if (s.off) continue;
+      ctx.fillStyle = s.color;
+      ctx.fillRect(s.x - s.hw, s.y - s.hh, s.hw * 2, s.hh * 2);
+    }
+    drawGap();
+    const order = player ? bodies.filter(b => b !== player).concat(player.alive ? [player] : []) : bodies;
+    for (const b of order) {
       if (b === player && run && run.invuln > 0 && Math.floor(run.invuln * 12) % 2) continue; // vilkkuu osuman jälkeen
       ctx.save();
       ctx.translate(b.x, b.y);
@@ -917,6 +1119,39 @@ tr.top td:nth-child(1) { color: var(--gold); }
       else { ctx.fillStyle = `rgba(${e.color},${0.55 * (1 - k)})`; ctx.fill(); ctx.strokeStyle = `rgba(255,255,160,${1 - k})`; ctx.lineWidth = 8; ctx.stroke(); }
     }
   }
+  function drawGap() {
+    const g = level.gap;
+    if (!g) return;
+    const t = level.border, h = g.yTop - g.yBottom;
+    if (g.phase === "warn") {
+      // välkkyvä varoitus ennen avautumista
+      if (Math.floor(g.t * 6) % 2) return;
+      ctx.fillStyle = "rgba(255,225,0,0.55)";
+      ctx.fillRect(level.left - t, g.yBottom, t + 50, h);
+      ctx.fillRect(level.right - 50, g.yBottom, t + 50, h);
+      return;
+    }
+    ctx.fillStyle = C.Black;
+    ctx.fillRect(level.left - t, g.yBottom, t, h);
+    ctx.fillRect(level.right, g.yBottom, t, h);
+    const pulse = 0.45 + 0.35 * Math.sin(g.t * 8);
+    // hehku aukon kohdalla, jotta reitti erottuu
+    const glowL = ctx.createLinearGradient(level.left - 40, 0, level.left + 160, 0);
+    glowL.addColorStop(0, `rgba(255,105,180,${0.45 * pulse + 0.15})`);
+    glowL.addColorStop(1, "rgba(255,105,180,0)");
+    ctx.fillStyle = glowL;
+    ctx.fillRect(level.left - 40, g.yBottom, 200, h);
+    const glowR = ctx.createLinearGradient(level.right + 40, 0, level.right - 160, 0);
+    glowR.addColorStop(0, `rgba(255,105,180,${0.45 * pulse + 0.15})`);
+    glowR.addColorStop(1, "rgba(255,105,180,0)");
+    ctx.fillStyle = glowR;
+    ctx.fillRect(level.right - 160, g.yBottom, 200, h);
+    ctx.fillStyle = `rgba(255,105,180,${pulse})`;
+    for (const x of [level.left - t, level.right]) {
+      ctx.fillRect(x, g.yTop - 6, t, 12);
+      ctx.fillRect(x, g.yBottom - 6, t, 12);
+    }
+  }
   function poly(pts, size) {
     pts.forEach(([x, y], i) => i ? ctx.lineTo(x * size, y * size) : ctx.moveTo(x * size, y * size));
     ctx.closePath();
@@ -935,7 +1170,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
   window.addEventListener("resize", resize);
   resize();
-  $("rules").textContent = `Aikaa on ${GAME_TIME} sekuntia. Peli päättyy, kun aika loppuu tai energia on nolla.`;
+  $("rules").textContent = `Jokainen kenttä kestää ${GAME_TIME} sekuntia. Jos energiaa on jäljellä, pääset seuraavaan, vaikeampaan kenttään. Seiniin aukeaa välillä aukkoja, joista pääsee toiselle puolelle.`;
   // ---------- Kävijäseuranta (Google Analytics 4, vain suostumuksella) ----------
   // Ladataan vain julkaistulla sivustolla ja vasta kun pelaaja on sallinut analytiikkaevästeet.
   const GA_ID = "G-H9HNS0SNV3";                   // GA4-mittaustunnus

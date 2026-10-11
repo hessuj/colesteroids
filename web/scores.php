@@ -2,7 +2,9 @@
 /**
  * Colesteroids OG+ – yhteinen tulostaulu.
  * GET  scores.php -> {"scores":[...]}  (kymmenen parasta, yksi rivi per nimimerkki)
- * POST scores.php  {nick, score, seconds, eaten, token}
+ * POST scores.php  {nick, score, levels: [{eaten, seconds}, ...], token}
+ *   Palvelin laskee pisteet kentittäin samalla kaavalla kuin peli. Vanha muoto
+ *   {nick, score, seconds, eaten, token} tulkitaan yhdeksi kentäksi.
  *   201 {"ok":true,"id":"…","improved":true|false,"best":n,"scores":[...]}
  *   409 {"error":"…","code":"nick_taken"}  nimimerkki kuuluu toiselle selaimelle
  *
@@ -28,10 +30,15 @@ const MAX_KEEP  = 1000;   // montako nimimerkkiä säilytetään
 const MAX_BODY  = 2048;   // tavua
 
 // Samat säännöt kuin pelissä (index.html)
-const GAME_TIME         = 60;
-const HYVIS_POINTS      = 100;
+const GAME_TIME         = 60;   // yhden kentän kesto
 const POINTS_PER_SECOND = 10;
-const MAX_EATEN         = 80;
+const MAX_EATEN         = 80;   // syötyjä hyviksiä per kenttä enintään
+const MAX_LEVELS        = 60;
+
+/** Vihreän arvo kentässä n (1, 2, 3, ...), sama kuin levelCfg(n).greenPoints pelissä. */
+function green_points(int $n): int {
+    return 100 + 50 * ($n - 1);
+}
 const RATE_SECONDS      = 15; // sama IP voi tallentaa korkeintaan näin usein
 
 function respond(int $code, array $data): void {
@@ -90,7 +97,7 @@ function top_list(array $scores): array {
     foreach (array_slice(dedupe($scores), 0, TOP) as $s) {
         $out[] = [
             'id' => $s['id'], 'nick' => $s['nick'], 'score' => $s['score'],
-            'seconds' => $s['seconds'], 'eaten' => $s['eaten'], 'at' => $s['at'],
+            'seconds' => $s['seconds'], 'eaten' => $s['eaten'], 'level' => $s['level'] ?? 1, 'at' => $s['at'],
         ];
     }
     return $out;
@@ -138,22 +145,35 @@ if ($body === false || strlen($body) > MAX_BODY) respond(413, ['error' => 'Pyynt
 $in = json_decode($body, true);
 if (!is_array($in)) respond(400, ['error' => 'Virheellinen pyyntö.']);
 
-$nick    = clean_nick($in['nick'] ?? '');
-$score   = filter_var($in['score'] ?? null, FILTER_VALIDATE_INT);
-$seconds = filter_var($in['seconds'] ?? null, FILTER_VALIDATE_INT);
-$eaten   = filter_var($in['eaten'] ?? null, FILTER_VALIDATE_INT);
-$token   = $in['token'] ?? '';
+$nick   = clean_nick($in['nick'] ?? '');
+$token  = $in['token'] ?? '';
+$levels = $in['levels'] ?? null;
+if (!is_array($levels)) {
+    // vanha, kentätön muoto
+    $levels = [['eaten' => $in['eaten'] ?? null, 'seconds' => $in['seconds'] ?? null]];
+}
 
 if ($nick === '') respond(422, ['error' => 'Nimimerkki puuttuu.']);
 if (!is_string($token) || !preg_match('/^[a-f0-9]{32,64}$/', $token)) {
     respond(422, ['error' => 'Selaimen tunniste puuttuu. Lataa sivu uudelleen.']);
 }
-if ($score === false || $seconds === false || $eaten === false
-    || $seconds < 0 || $seconds > GAME_TIME
-    || $eaten < 0 || $eaten > MAX_EATEN
-    || $score !== $eaten * HYVIS_POINTS + $seconds * POINTS_PER_SECOND) {
-    respond(422, ['error' => 'Tulos ei vastaa pelin sääntöjä.']);
+// Pisteet lasketaan kentittäin: läpäistyt kentät kestävät täydet 60 s, viimeinen voi päättyä kesken
+$invalid = ['error' => 'Tulos ei vastaa pelin sääntöjä.'];
+$count = count($levels);
+if ($count < 1 || $count > MAX_LEVELS || array_keys($levels) !== range(0, $count - 1)) respond(422, $invalid);
+$score = 0; $seconds = 0; $eaten = 0;
+foreach ($levels as $i => $lv) {
+    if (!is_array($lv)) respond(422, $invalid);
+    $e = filter_var($lv['eaten'] ?? null, FILTER_VALIDATE_INT);
+    $t = filter_var($lv['seconds'] ?? null, FILTER_VALIDATE_INT);
+    if ($e === false || $t === false || $e < 0 || $e > MAX_EATEN || $t < 0 || $t > GAME_TIME) respond(422, $invalid);
+    if ($i < $count - 1 && $t !== GAME_TIME) respond(422, $invalid);
+    $score += $e * green_points($i + 1) + $t * POINTS_PER_SECOND;
+    $seconds += $t;
+    $eaten += $e;
 }
+$level = $count;
+if (isset($in['score']) && filter_var($in['score'], FILTER_VALIDATE_INT) !== $score) respond(422, $invalid);
 
 // --- Tallennus lukon alla ---
 ensure_data_dir();
@@ -215,14 +235,14 @@ if ($idx !== null) {
     }
     $scores[$idx] = array_merge($scores[$idx], [
         'id' => bin2hex(random_bytes(6)), 'nick' => $nick, 'score' => $score,
-        'seconds' => $seconds, 'eaten' => $eaten, 'at' => $atMs,
+        'seconds' => $seconds, 'eaten' => $eaten, 'level' => $level, 'at' => $atMs,
     ]);
     $entryId = $scores[$idx]['id'];
 } else {
     $entryId = bin2hex(random_bytes(6));
     $scores[] = [
         'id' => $entryId, 'nick' => $nick, 'key' => $key, 'tokenHash' => $tokenHash,
-        'score' => $score, 'seconds' => $seconds, 'eaten' => $eaten, 'at' => $atMs,
+        'score' => $score, 'seconds' => $seconds, 'eaten' => $eaten, 'level' => $level, 'at' => $atMs,
     ];
 }
 usort($scores, 'by_score');
