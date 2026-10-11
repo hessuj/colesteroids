@@ -107,13 +107,52 @@ Taustamusiikin on tehnyt **V3nlukk4** Logic Prolla. Kappale soi kokonaan ja alka
 
 Musiikin ja efektit saa pois vasemman alakulman painikkeista tai näppäimillä **M** (musiikki) ja **N** (äänitehosteet).
 
+## Tausta
+
+Alkuperäinen Colesteroids syntyi vuonna 2019 Jyväskylän yliopiston Ohjelmointi 1 -kurssilla. Se kirjoitettiin C#-kielellä yliopiston [Jypeli](https://github.com/Jypeli-JYU/Jypeli)-pelikirjastolla, ja siitä puuttuivat vielä alkunäyttö, tulostaulu ja kunnollinen pistelasku.
+
+Colesteroids OG+ (2026) on sen paranneltu selainversio, joka on vibekoodattu Clauden kanssa. Kenttä, hahmot ja fysiikan oletusarvot on siirretty alkuperäisestä koodista mahdollisimman uskollisesti, ja alkuperäisen koodin TODO-kommenteista on tehty varsinainen pelimekaniikka.
+
+## Hakemistot
+
+```
+tools/           Julkaisua edeltävät tarkistukset (check_site.py)
+.github/         Julkaisuputki (workflows/deploy.yml) ja Dependabot
+web/             Selainversio
+  index.html     Peli (yksi HTML-tiedosto, ei riippuvuuksia)
+  scores.php     Yhteinen tulostaulu (PHP, tallentaa tiedostoon data/scores.json)
+  share.php      Yhden tuloksen jakosivu Facebookia varten (nimimerkki ja pisteet otsikossa)
+  share-image.php  Tuloksen jakokuva, piirretään og-base.png:n päälle (PHP GD)
+  share_lib.php  Yhteiset apufunktiot
+  og-image.png   Pelin yleinen jakokuva (Facebook / Open Graph)
+  og-base.png    Pohjakuva tuloskohtaisille jakokuville
+  fonts/         Inter-fontti jakokuviin (SIL Open Font License 1.1)
+  colesteroids-music.mp3  Taustamusiikki, V3nlukk4 (CC BY 4.0)
+original-2019/   Alkuperäinen C#/Jypeli-projekti (Visual Studio for Mac)
+```
+
 ### Selainversion ajaminen
 
 Vie `web`-kansion sisältö palvelimelle, jossa on PHP 7.4 tai uudempi. Peli käyttää silloin yhteistä tulostaulua `scores.php`:n kautta. Palvelin laskee pisteet kentittäin samalla kaavalla kuin peli. Tulostaulussa on yksi rivi per nimimerkki, ja se päivittyy vain paremmalla tuloksella. Nimimerkki varataan selaimelle, joka tallentaa sillä ensimmäisen kerran: selain lähettää satunnaisen tunnisteen, josta palvelin säilyttää vain tiivisteen. `scores.php` luo ensimmäisellä tallennuksella `data`-kansion ja suojaa sen `.htaccess`-tiedostolla. Palvelin tarkistaa, että pisteet vastaavat pelin sääntöjä, ja rajoittaa tallennustahtia.
 
 Jos PHP:tä ei ole tai avaat `index.html`:n suoraan tiedostona, tulostaulu tallentuu pelaajan omaan selaimeen (localStorage).
 
-Julkaisu sivustolle tapahtuu GitHub Actionsilla (`.github/workflows/deploy.yml`) aina, kun `web`-kansio muuttuu `main`-haarassa.
+### Julkaisuputki
+
+Julkaisu sivustolle tapahtuu GitHub Actionsilla (`.github/workflows/deploy.yml`). Putkessa on kaksi vaihetta:
+
+1. **Tarkistukset** ajetaan jokaisessa pushissa ja pull requestissa:
+   - **Salaisuusskannaus** koko git-historiasta [gitleaksilla](https://github.com/gitleaks/gitleaks). Binääri ladataan julkaisusta, ja sen tarkistussumma varmistetaan.
+   - **`tools/check_site.py`**: HTML:n rakenne (sulkemattomat tagit, päällekkäiset id:t), JavaScriptin syntaksi, koodin elementtiviittaukset, kielitiedostojen eheys (samat avaimet suomeksi ja englanniksi), 50 kentän kelpoisuus sekä PHP:n syntaksi.
+2. **Julkaisu** FTP:llä osoitteeseen hessujarvinen.com/softa/colesteroids. Se ajetaan vain `main`-haarasta ja vain, jos tarkistukset menivät läpi. Palvelimen `data`-kansioon (tulostaulu, jakokuvat) julkaisu ei koske.
+
+Tietoturva:
+- Kaikki actionit on lukittu commit-SHA:han. Julkaisuvaiheen action näkee FTP-tunnukset, ja tagin voi siirtää osoittamaan muuhun koodiin, SHA:ta ei.
+- Dependabot (`.github/dependabot.yml`) ehdottaa actionien päivityksiä viikoittain pull requestina, jossa tarkistukset ajetaan ennen yhdistämistä.
+- Putkella on vain lukuoikeus repoon, eikä GitHub-tunnusta tallenneta levylle.
+- FTP-tunnus on rajattu pelkkään pelin kansioon.
+
+Tarkistukset voi ajaa myös omalla koneella ennen pushia: `python3 tools/check_site.py`.
 
 ### Alkuperäinen versio
 
