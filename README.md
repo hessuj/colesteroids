@@ -90,32 +90,13 @@ Pelissä on 50 kenttää. Kenttä 1 on alkuperäinen vuoden 2019 kenttä, kentä
 
 </details>
 
-### Äänet
+### Musiikki ja äänet
 
-Äänitehosteet syntetisoidaan pelissä Web Audio -rajapinnalla, joten erillisiä äänitiedostoja ei ole: syöminen, räjähdys, pomput seinistä, nuolinäppäimen puhallus, seinäaukon varoitus ja avautuminen, läpilento, uusi kolesteroliökkö, kentän läpäisy ja pelin loppu. Äänet saa pois vasemman alakulman painikkeesta tai **M**-näppäimellä.
+Taustamusiikin on tehnyt **V3nlukk4** Logic Prolla. Kappale soi kokonaan ja alkaa saumattomasti alusta. Musiikki hiljenee hetkeksi tärkeiden äänitehosteiden ajaksi.
 
-Näppäimet: nuolet liikuttavat, **M** mykistää äänet, **F1** näyttää ohjeet ja **Esc** lopettaa pelin.
+Äänitehosteet syntetisoidaan pelissä Web Audio -rajapinnalla, joten niille ei ole erillisiä tiedostoja: syöminen, räjähdys, pomput seinistä, nuolinäppäimen puhallus, seinäaukon varoitus ja avautuminen, läpilento, uusi kolesteroliökkö, kentän läpäisy ja pelin loppu.
 
-## Tausta
-
-Alkuperäinen Colesteroids syntyi vuonna 2019 Jyväskylän yliopiston Ohjelmointi 1 -kurssilla. Se kirjoitettiin C#-kielellä yliopiston [Jypeli](https://github.com/Jypeli-JYU/Jypeli)-pelikirjastolla, ja siitä puuttuivat vielä alkunäyttö, tulostaulu ja kunnollinen pistelasku.
-
-Colesteroids OG+ (2026) on sen paranneltu selainversio, joka on vibekoodattu Clauden kanssa. Kenttä, hahmot ja fysiikan oletusarvot on siirretty alkuperäisestä koodista mahdollisimman uskollisesti, ja alkuperäisen koodin TODO-kommenteista on tehty varsinainen pelimekaniikka.
-
-## Hakemistot
-
-```
-web/             Selainversio
-  index.html     Peli (yksi HTML-tiedosto, ei riippuvuuksia)
-  scores.php     Yhteinen tulostaulu (PHP, tallentaa tiedostoon data/scores.json)
-  share.php      Yhden tuloksen jakosivu Facebookia varten (nimimerkki ja pisteet otsikossa)
-  share-image.php  Tuloksen jakokuva, piirretään og-base.png:n päälle (PHP GD)
-  share_lib.php  Yhteiset apufunktiot
-  og-image.png   Pelin yleinen jakokuva (Facebook / Open Graph)
-  og-base.png    Pohjakuva tuloskohtaisille jakokuville
-  fonts/         Inter-fontti jakokuviin (SIL Open Font License 1.1)
-original-2019/   Alkuperäinen C#/Jypeli-projekti (Visual Studio for Mac)
-```
+Musiikin ja efektit saa pois vasemman alakulman painikkeista tai näppäimillä **M** (musiikki) ja **N** (äänitehosteet).
 
 ### Selainversion ajaminen
 
@@ -130,6 +111,8 @@ Julkaisu sivustolle tapahtuu GitHub Actionsilla (`.github/workflows/deploy.yml`)
 `original-2019` sisältää vuoden 2019 lähdekoodin sellaisenaan. Jypeli-kirjastot palautetaan NuGetillä (`packages.config`). Projektiin kuuluneet macOS-natiivikirjastot (`libSDL2-2.0.0.dylib`, `libopenal.1.dylib`) eivät ole repossa, koska ne ovat kolmannen osapuolen binäärejä.
 
 ## Lisenssi
+
+**Musiikki:** `web/colesteroids-music.mp3` © V3nlukk4, lisensoitu [Creative Commons Nimeä 4.0 Kansainvälinen (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/deed.fi) -lisenssillä. MIT-lisenssi koskee vain koodia, ei musiikkia.
 
 Jakokuvissa käytetty Inter-fontti on The Inter Project Authorsin ja julkaistu SIL Open Font License 1.1 -lisenssillä (`web/fonts/OFL.txt`).
 

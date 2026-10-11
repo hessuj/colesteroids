@@ -130,9 +130,11 @@ tr.top td:nth-child(1) { color: var(--gold); }
 #consent .row { justify-content: flex-end; }
 #consent button { font-size: 14px; padding: 8px 16px; }
 .linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; cursor: pointer; }
-#soundBtn { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: rgba(42,42,48,.6); color: var(--fg); z-index: 5; }
+#musicBtn { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: rgba(42,42,48,.6); color: var(--fg); z-index: 5; }
+#musicBtn.off { color: var(--muted); }
+#soundBtn { position: fixed; left: 64px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: rgba(42,42,48,.6); color: var(--fg); z-index: 5; }
 #soundBtn.off { color: var(--muted); }
-#tools { position: fixed; left: 64px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; }
+#tools { position: fixed; left: 112px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; }
 #tools button { padding: 6px 12px; font-size: 14px; background: rgba(42,42,48,.6); }
 @media (prefers-reduced-motion: reduce) { #healthFill { transition: none; } #timer.low { animation: none; } }
 </style>
@@ -188,11 +190,12 @@ tr.top td:nth-child(1) { color: var(--gold); }
       <dt>Idea ja toteutus</dt><dd>Hessu Järvinen</dd>
       <dt>Alkuperäinen (2019)</dt><dd>C# ja Jypeli</dd>
       <dt>OG+ (2026)</dt><dd>JavaScript, vibekoodattu Claudella</dd>
-      <dt>Äänet</dt><dd>Syntetisoidaan pelissä (Web Audio)</dd>
+      <dt>Musiikki</dt><dd id="musicCredit">V3nlukk4 · <a href="https://creativecommons.org/licenses/by/4.0/deed.fi" target="_blank" rel="noopener">CC BY 4.0</a></dd>
+      <dt>Äänitehosteet</dt><dd>Syntetisoidaan pelissä (Web Audio)</dd>
       <dt>Lisenssi</dt><dd><a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT</a></dd>
     </dl>
     <p class="copy" id="privacyNote" hidden>Kävijäseuranta: Google Analytics, vain suostumuksella. <button type="button" class="linkish" id="consentChange">Muuta evästeasetuksia</button></p>
-    <p class="copy">© 2026 Hessu Järvinen. Colesteroids on Hessu Järvisen alkuperäinen idea. Koodi on julkaistu MIT-lisenssillä: saat parannella sitä vapaasti, kunhan tekijänoikeusilmoitus säilyy mukana.</p>
+    <p class="copy">© 2026 Hessu Järvinen. Colesteroids on Hessu Järvisen alkuperäinen idea. Koodi on julkaistu MIT-lisenssillä: saat parannella sitä vapaasti, kunhan tekijänoikeusilmoitus säilyy mukana. Musiikki © V3nlukk4, CC BY 4.0.</p>
     <div class="row"><button id="aboutClose">Sulje</button></div>
   </div>
 </div>
@@ -267,7 +270,10 @@ tr.top td:nth-child(1) { color: var(--gold); }
   <button class="down" data-dir="down" aria-label="Alas">▼</button>
   <button class="right" data-dir="right" aria-label="Oikealle">▶</button>
 </div>
-<button id="soundBtn" type="button" aria-label="Äänet pois" title="Äänet päälle/pois (M)">
+<button id="musicBtn" type="button" aria-label="Musiikki pois" title="Musiikki päälle/pois (M)">
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a2.5 2.5 0 1 1-2-2.45V5l12-2v12.5a2.5 2.5 0 1 1-2-2.45V7.1l-8 1.33z"/><path id="musicSlash" d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" hidden/></svg>
+</button>
+<button id="soundBtn" type="button" aria-label="Äänitehosteet pois" title="Äänitehosteet päälle/pois (N)">
   <svg id="soundOn" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 4V5L7 9H3z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   <svg id="soundOff" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" hidden><path fill="currentColor" d="M3 9v6h4l5 4V5L7 9H3z"/><path d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 </button>
@@ -398,8 +404,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
     let ac = null, master = null, noiseBuf = null;
     let on = (() => { try { return localStorage.getItem(SOUND_KEY) !== "off"; } catch { return true; } })();
     const last = {};
-    function ensure() {
-      if (!on) return null;
+    // Yhteinen AudioContext efekteille ja taustamusiikille
+    function context() {
       if (!ac) {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
@@ -408,8 +414,12 @@ tr.top td:nth-child(1) { color: var(--gold); }
         master.gain.value = 0.5;
         master.connect(ac.destination);
       }
-      if (ac.state === "suspended") ac.resume();
+      if (ac.state === "suspended" && !document.hidden) ac.resume();
       return ac;
+    }
+    function ensure() {
+      if (!on) return null;
+      return context();
     }
     function throttled(name, ms) {
       const t = performance.now();
@@ -450,11 +460,12 @@ tr.top td:nth-child(1) { color: var(--gold); }
     }
     return {
       get on() { return on; },
-      unlock() { ensure(); },
+      unlock() { context(); },
+      context,
       toggle() {
         on = !on;
         try { localStorage.setItem(SOUND_KEY, on ? "on" : "off"); } catch {}
-        if (on) { ensure(); this.click(); } else if (ac) ac.suspend();
+        if (on) { ensure(); this.click(); }
         return on;
       },
       click() { tone({ type: "triangle", f0: 660, f1: 880, dur: 0.06, vol: 0.12 }); },
@@ -488,6 +499,77 @@ tr.top td:nth-child(1) { color: var(--gold); }
       die() {
         [440, 370, 311, 262].forEach((f, i) => tone({ type: "triangle", f0: f, f1: f * 0.97, dur: 0.3, vol: 0.22, delay: i * 0.18 }));
         noise({ dur: 0.8, vol: 0.35, f0: 900, f1: 50 });
+      }
+    };
+  })();
+
+  // ---------- Taustamusiikki ----------
+  // Kappale soi kokonaan ja alkaa sitten alusta. Web Audion silmukalla saumaton: MP3-koodaus lisää
+  // alkuun ja loppuun lyhyen hiljaisuuden, jonka pituudet Logic Pro kirjasi tiedostoon (iTunSMPB).
+  const MUSIC_KEY = "colesteroids.music";
+  // Musiikki: V3nlukk4, lisenssi CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+  const MUSIC_FILE = "colesteroids-music.mp3";
+  const MUSIC_LEAD = 528 / 48000;          // alun koodausviive, s
+  const MUSIC_CONTENT = 4253539 / 48000;   // varsinaisen kappaleen pituus, s (1:28,6)
+  const MUSIC_VOLUME = 0.3;                // efektien alla
+  const music = (() => {
+    let buf = null, loading = null, src = null, gain = null, wanted = false;
+    let on = (() => { try { return localStorage.getItem(MUSIC_KEY) !== "off"; } catch { return true; } })();
+    function load(ac) {
+      if (!loading) {
+        loading = fetch(MUSIC_FILE)
+          .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+          .then(b => new Promise((res, rej) => ac.decodeAudioData(b, res, rej)))
+          .then(b => (buf = b))
+          .catch(() => { loading = null; return null; });
+      }
+      return loading;
+    }
+    async function start() {
+      wanted = true;
+      if (!on || src) return;
+      const ac = sfx.context();
+      if (!ac) return;
+      const b = await load(ac);
+      if (!b || !wanted || !on || src) return;
+      gain = ac.createGain();
+      gain.gain.setValueAtTime(0.0001, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(MUSIC_VOLUME, ac.currentTime + 1.2);
+      gain.connect(ac.destination);
+      src = ac.createBufferSource();
+      src.buffer = b;
+      src.loop = true;
+      // Jos selain jätti koodausviiveen ääniraitaan, ohitetaan se silmukassa
+      const padded = b.duration - MUSIC_CONTENT > 0.02;
+      src.loopStart = padded ? MUSIC_LEAD : 0;
+      src.loopEnd = padded ? MUSIC_LEAD + MUSIC_CONTENT : b.duration;
+      src.connect(gain);
+      src.start(0, src.loopStart);
+    }
+    function stop() {
+      wanted = false;
+      if (!src) return;
+      const ac = sfx.context(), s0 = src, g0 = gain;
+      src = null; gain = null;
+      g0.gain.setTargetAtTime(0.0001, ac.currentTime, 0.15);
+      s0.stop(ac.currentTime + 0.8);
+    }
+    return {
+      get on() { return on; },
+      start,
+      toggle() {
+        on = !on;
+        try { localStorage.setItem(MUSIC_KEY, on ? "on" : "off"); } catch {}
+        if (on) { wanted = true; start(); } else { stop(); wanted = true; }
+        return on;
+      },
+      // musiikki hiljenee hetkeksi, jotta tärkeä efekti kuuluu
+      duck(level = 0.4, hold = 0.35) {
+        if (!gain) return;
+        const t = sfx.context().currentTime;
+        gain.gain.cancelScheduledValues(t);
+        gain.gain.setTargetAtTime(MUSIC_VOLUME * level, t, 0.03);
+        gain.gain.setTargetAtTime(MUSIC_VOLUME, t + hold, 0.25);
       }
     };
   })();
@@ -721,6 +803,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
   function hurt(p) {
     p.alive = false;
     sfx.hurt();
+    music.duck(0.45, 0.4);
     run.health = Math.max(0, run.health - run.cfg.damage);
     run.invuln = INVULNERABLE;
     explode(p.x, p.y, p.r * 6, "255,140,0");
@@ -807,6 +890,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     const next = run.level + 1;
     track("level_up", { level: next });
     sfx.levelUp();
+    music.duck(0.5, 0.8);
     $("bannerTitle").textContent = "Kenttä " + next;
     $("bannerSub").textContent = `Kenttä ${run.level} läpäisty · +${LEVEL_BONUS} % energiaa · ${LAYOUTS[(next - 1) % LAYOUTS.length].name}`;
     $("levelBanner").hidden = false;
@@ -820,6 +904,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     player.alive = false;
     explode(player.x, player.y, 260, "255,105,180");
     sfx.die();
+    music.duck(0.25, 2.2);
     run.levels.push({ eaten: run.levelEaten, seconds: Math.floor(run.elapsed) });
     run.final = score();
     run.seconds = run.levels.reduce((a, l) => a + l.seconds, 0);
@@ -833,6 +918,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
   function startGame() {
     sfx.unlock();
+    music.start();
     store.shareId = null;
     track("game_start");
     run = { level: 1, health: MAX_HEALTH, eaten: 0, banked: 0, levels: [] };
@@ -1121,7 +1207,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
     "Right - Lyö pelaajaa oikealle",
     "Left - Lyö pelaajaa vasemmalle",
     "F1 - Näytä näppäinohjeet",
-    "M - Äänet päälle/pois",
+    "M - Musiikki päälle/pois",
+    "N - Äänitehosteet päälle/pois",
     "Escape - Lopeta peli"
   ];
   function showControlHelp() { HELP.forEach(message); }
@@ -1175,7 +1262,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
   window.addEventListener("keydown", e => {
     if (e.target instanceof HTMLInputElement) return;
     if (KEYMAP[e.key] && state === "playing") { e.preventDefault(); if (!e.repeat) liikutaPelaajaa(KEYMAP[e.key]); }
-    else if (e.key === "m" || e.key === "M") { if (!e.repeat) toggleSound(); }
+    else if (e.key === "m" || e.key === "M") { if (!e.repeat) { sfx.unlock(); toggleMusic(); } }
+    else if (e.key === "n" || e.key === "N") { if (!e.repeat) toggleSound(); }
     else if (e.key === "F1") { e.preventDefault(); if (!e.repeat) showControlHelp(); }
     else if (e.key === "Escape") {
       e.preventDefault();
@@ -1290,8 +1378,19 @@ tr.top td:nth-child(1) { color: var(--gold); }
     $("soundOn").hidden = !sfx.on;
     $("soundOff").hidden = sfx.on;
     $("soundBtn").classList.toggle("off", !sfx.on);
-    $("soundBtn").setAttribute("aria-label", sfx.on ? "Äänet pois" : "Äänet päälle");
+    $("soundBtn").setAttribute("aria-label", sfx.on ? "Äänitehosteet pois" : "Äänitehosteet päälle");
+    $("musicSlash").hidden = music.on;
+    $("musicBtn").classList.toggle("off", !music.on);
+    $("musicBtn").setAttribute("aria-label", music.on ? "Musiikki pois" : "Musiikki päälle");
   }
+  function toggleMusic() { music.toggle(); renderSoundBtn(); }
+  $("musicBtn").addEventListener("click", e => { sfx.unlock(); toggleMusic(); e.currentTarget.blur(); });
+  // taustalla olevassa välilehdessä äänet tauolle
+  document.addEventListener("visibilitychange", () => {
+    const ac = sfx.context();
+    if (!ac) return;
+    if (document.hidden) ac.suspend(); else ac.resume();
+  });
   function toggleSound() { sfx.toggle(); renderSoundBtn(); }
   $("soundBtn").addEventListener("click", e => { toggleSound(); e.currentTarget.blur(); });
   renderSoundBtn();
