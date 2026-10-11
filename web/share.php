@@ -29,7 +29,7 @@ $desc  = share_description($s);
 $url   = $base . 'share.php?id=' . $sid;
 $img   = $base . 'share-image.php?id=' . $sid;
 ?><!doctype html>
-<html lang="fi">
+<html lang="<?= $e(share_lang($s['lang'] ?? 'fi')) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,18 +40,18 @@ $img   = $base . 'share-image.php?id=' . $sid;
 <meta property="og:type" content="website">
 <meta property="og:url" content="<?= $e($url) ?>">
 <meta property="og:site_name" content="hessujarvinen.com">
-<meta property="og:locale" content="fi_FI">
+<meta property="og:locale" content="<?= $e(share_text($s, 'locale')) ?>">
 <meta property="og:title" content="<?= $e($title) ?>">
 <meta property="og:description" content="<?= $e($desc) ?>">
 <meta property="og:image" content="<?= $e($img) ?>">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="<?= $e($s['nick'] . ': ' . fmt_points($s['score']) . ' pistettä Colesteroids OG+ -pelissä') ?>">
+<meta property="og:image:alt" content="<?= $e(share_text($s, 'alt')) ?>">
 <meta name="twitter:card" content="summary_large_image">
 <style>body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center;padding:16px}a{color:#ff69b4}</style>
-<script>location.replace("./");</script>
+<script>location.replace(<?= json_encode('./' . ((($s['lang'] ?? 'fi') === 'en') ? '?lang=en' : '')) ?>);</script>
 </head>
 <body>
-<p><?= $e($title) ?><br><br><a href="./">Pelaa Colesteroids OG+</a></p>
+<p><?= $e($title) ?><br><br><a href="./"><?= $e(share_text($s, 'play')) ?></a></p>
 </body>
 </html>

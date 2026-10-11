@@ -223,7 +223,7 @@ if ($idx !== null) {
         // Huonompi tai yhtä hyvä tulos: tulostaulu ei muutu
         finish($fh, $store, $scores, 201, [
             'ok' => true, 'id' => $old['id'], 'improved' => false, 'best' => $old['score'],
-            'share' => add_share($nick, $score, $level, $eaten, $seconds),
+            'share' => add_share($nick, $score, $level, $eaten, $seconds, is_string($in['lang'] ?? null) ? $in['lang'] : 'fi'),
             'scores' => top_list($scores),
         ]);
     }
@@ -243,6 +243,6 @@ usort($scores, 'by_score');
 
 finish($fh, $store, $scores, 201, [
     'ok' => true, 'id' => $entryId, 'improved' => true, 'best' => $score,
-    'share' => add_share($nick, $score, $level, $eaten, $seconds),
+    'share' => add_share($nick, $score, $level, $eaten, $seconds, is_string($in['lang'] ?? null) ? $in['lang'] : 'fi'),
     'scores' => top_list($scores),
 ]);

@@ -8,6 +8,8 @@ Colesteroids on selaimessa pelattava fysiikkapeli. Ohjaat vaaleanpunaista sydän
 
 ▶ **Pelaa:** https://hessujarvinen.com/softa/colesteroids
 
+> 🇬🇧 **In English:** Colesteroids OG+ is a browser physics game: steer a pink heart through 50 levels of the circulatory system, eat the good lipoproteins, dodge cholesterol blobs and grab Rosuvastatin pills for a safety shield. The game is available in Finnish and English (FI / EN in the menu, or [?lang=en](https://hessujarvinen.com/softa/colesteroids/?lang=en)).
+
 ## Pelin säännöt
 
 | | |
@@ -90,6 +92,12 @@ Pelissä on 50 kenttää. Kenttä 1 on alkuperäinen vuoden 2019 kenttä, kentä
 50. Ison verenkierron finaali
 
 </details>
+
+### Kielet
+
+Peli on suomeksi ja englanniksi. Kieli valitaan valikon FI / EN -napeista, ja peli muistaa valinnan. Ensimmäisellä kerralla kieli päätellään selaimen kielestä (suomi → suomi, muut → englanti), ja osoitteella `?lang=en` peli avautuu suoraan englanniksi.
+
+Kaikki tekstit ovat `index.html`:n `I18N`-sanastossa avaimen takana, ja peli hakee ne funktiolla `t(avain)`. HTML-elementit merkitään `data-i18n`-attribuuteilla, joten kielen vaihto päivittää koko näkymän. Uuden kielen saa lisäämällä sanastoon uuden lohkon; puuttuvat tekstit näytetään suomeksi. Facebook-jakokortit tehdään sillä kielellä, jolla tulos pelattiin.
 
 ### Musiikki ja äänet
 

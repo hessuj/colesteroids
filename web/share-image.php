@@ -55,10 +55,10 @@ function fit_text($im, string $font, float $size, float $min, int $x, int $y, in
 // Koko px -> pt: GD käyttää pisteitä (96 dpi), 1 px = 0.75 pt
 fit_text($im, $black, 22, 14, $X, 110, $gold, 'COLESTEROIDS OG+', $MAXW);
 fit_text($im, $black, 60, 16, $X, 200, $pink, $s['nick'], $MAXW);
-fit_text($im, $black, 66, 30, $X, 300, $white, fmt_points($s['score']) . ' pistettä', $MAXW);
-fit_text($im, $semi, 22, 14, $X, 360, $white, 'Kenttä ' . $s['level'] . ' · ' . $s['eaten'] . ' hyvistä syöty', $MAXW);
-fit_text($im, $semi, 22, 14, $X, 400, $gold, 'Diagnoosi: ' . share_diagnosis($s) . ' · ' . fmt_time($s['seconds']), $MAXW);
-fit_text($im, $semi, 20, 14, $X, 470, $muted, 'Pystytkö parempaan? Pelaa selaimessa', $MAXW);
+fit_text($im, $black, 66, 30, $X, 300, $white, share_text($s, 'points'), $MAXW);
+fit_text($im, $semi, 22, 14, $X, 360, $white, share_text($s, 'line1'), $MAXW);
+fit_text($im, $semi, 22, 14, $X, 400, $gold, share_text($s, 'line2'), $MAXW);
+fit_text($im, $semi, 20, 14, $X, 470, $muted, share_text($s, 'cta'), $MAXW);
 fit_text($im, $semi, 20, 14, $X, 508, $pink, 'hessujarvinen.com/softa/colesteroids', $MAXW);
 
 if (ensure_data_dir() && (is_dir(SHARE_IMG_DIR) || mkdir(SHARE_IMG_DIR, 0750, true))) {
