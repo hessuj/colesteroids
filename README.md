@@ -20,7 +20,7 @@ Colesteroids on selaimessa pelattava fysiikkapeli. Ohjaat vaaleanpunaista sydän
 - Peli päättyy, kun sydämen energia loppuu. Tulos on kaikkien kenttien pisteet yhteensä.
 - Jokainen selvitty sekunti antaa 10 pistettä. Uusi kolesteroliökkö ilmestyy 15 sekunnin välein.
 - Seiniin aukeaa välillä aukko samalle korkeudelle molemmille puolille. Aukosta lentänyt tulee sisään toiselta puolelta – myös ökköt.
-- Tuloksen voi tallentaa nimimerkillä tulostauluun ja jakaa Facebookissa.
+- Tuloksen voi tallentaa nimimerkillä tulostauluun ja jakaa Facebookissa. Jaossa näkyvät nimimerkki, pisteet, kenttä ja leikkimielinen "diagnoosi" tuloksen mukaan.
 
 | Kenttä | 1 | 2 | 3 | 4 | 5 | 6–19 | 20+ |
 |---|---|---|---|---|---|---|---|
@@ -108,7 +108,12 @@ Colesteroids OG+ (2026) on sen paranneltu selainversio, joka on vibekoodattu Cla
 web/             Selainversio
   index.html     Peli (yksi HTML-tiedosto, ei riippuvuuksia)
   scores.php     Yhteinen tulostaulu (PHP, tallentaa tiedostoon data/scores.json)
-  og-image.png   Jakokuva (Facebook / Open Graph)
+  share.php      Yhden tuloksen jakosivu Facebookia varten (nimimerkki ja pisteet otsikossa)
+  share-image.php  Tuloksen jakokuva, piirretään og-base.png:n päälle (PHP GD)
+  share_lib.php  Yhteiset apufunktiot
+  og-image.png   Pelin yleinen jakokuva (Facebook / Open Graph)
+  og-base.png    Pohjakuva tuloskohtaisille jakokuville
+  fonts/         Inter-fontti jakokuviin (SIL Open Font License 1.1)
 original-2019/   Alkuperäinen C#/Jypeli-projekti (Visual Studio for Mac)
 ```
 
@@ -125,5 +130,8 @@ Julkaisu sivustolle tapahtuu GitHub Actionsilla (`.github/workflows/deploy.yml`)
 `original-2019` sisältää vuoden 2019 lähdekoodin sellaisenaan. Jypeli-kirjastot palautetaan NuGetillä (`packages.config`). Projektiin kuuluneet macOS-natiivikirjastot (`libSDL2-2.0.0.dylib`, `libopenal.1.dylib`) eivät ole repossa, koska ne ovat kolmannen osapuolen binäärejä.
 
 ## Lisenssi
+
+Jakokuvissa käytetty Inter-fontti on The Inter Project Authorsin ja julkaistu SIL Open Font License 1.1 -lisenssillä (`web/fonts/OFL.txt`).
+
 
 [MIT](LICENSE) © 2026 Hessu Järvinen. Colesteroids on Hessu Järvisen alkuperäinen idea. Saat parannella koodia vapaasti, kunhan tekijänoikeusilmoitus säilyy mukana.

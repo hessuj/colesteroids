@@ -14,16 +14,18 @@
  * vain sama selain.
  *
  * Tulokset tallentuvat tiedostoon data/scores.json. Kansio suojataan .htaccessilla.
+ * Jokaisesta tallennuksesta luodaan myös jakotunniste (share), jolla share.php
+ * näyttää tuloksen Facebook-jaossa.
  *
  * MIT License, (c) 2026 Hessu Järvinen
  */
 declare(strict_types=1);
+require __DIR__ . '/share_lib.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 
-const DATA_DIR  = __DIR__ . '/data';
 const DATA_FILE = DATA_DIR . '/scores.json';
 const TOP       = 10;     // montako näytetään
 const MAX_KEEP  = 1000;   // montako nimimerkkiä säilytetään
@@ -47,15 +49,6 @@ function respond(int $code, array $data): void {
     exit;
 }
 
-function ensure_data_dir(): void {
-    if (!is_dir(DATA_DIR) && !mkdir(DATA_DIR, 0750, true) && !is_dir(DATA_DIR)) {
-        respond(500, ['error' => 'Tulostaulun tallennuskansiota ei voitu luoda.']);
-    }
-    $ht = DATA_DIR . '/.htaccess';
-    if (!file_exists($ht)) {
-        file_put_contents($ht, "<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n  Deny from all\n</IfModule>\n");
-    }
-}
 
 /** Nimimerkin vertailuavain: kirjainkoko ja ylimääräiset välilyönnit eivät erota pelaajia. */
 function nick_key(string $nick): string {
@@ -176,7 +169,7 @@ $level = $count;
 if (isset($in['score']) && filter_var($in['score'], FILTER_VALIDATE_INT) !== $score) respond(422, $invalid);
 
 // --- Tallennus lukon alla ---
-ensure_data_dir();
+if (!ensure_data_dir()) respond(500, ['error' => 'Tulostaulun tallennuskansiota ei voitu luoda.']);
 $fh = fopen(DATA_FILE, 'c+');
 if (!$fh) respond(500, ['error' => 'Tulostaulua ei voitu avata.']);
 flock($fh, LOCK_EX);
@@ -230,6 +223,7 @@ if ($idx !== null) {
         // Huonompi tai yhtä hyvä tulos: tulostaulu ei muutu
         finish($fh, $store, $scores, 201, [
             'ok' => true, 'id' => $old['id'], 'improved' => false, 'best' => $old['score'],
+            'share' => add_share($nick, $score, $level, $eaten, $seconds),
             'scores' => top_list($scores),
         ]);
     }
@@ -249,5 +243,6 @@ usort($scores, 'by_score');
 
 finish($fh, $store, $scores, 201, [
     'ok' => true, 'id' => $entryId, 'improved' => true, 'best' => $score,
+    'share' => add_share($nick, $score, $level, $eaten, $seconds),
     'scores' => top_list($scores),
 ]);

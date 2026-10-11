@@ -833,6 +833,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
   function startGame() {
     sfx.unlock();
+    store.shareId = null;
     track("game_start");
     run = { level: 1, health: MAX_HEALTH, eaten: 0, banked: 0, levels: [] };
     paused = false;
@@ -981,6 +982,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
         const data = await r.json().catch(() => ({}));
         if (r.ok && data.ok) {
           lastSaved = data.id;
+          store.shareId = typeof data.share === "string" && /^[a-f0-9]{12}$/.test(data.share) ? data.share : null;
           store.shared = serverList(data);
           if (data.improved === false) {
             store.notice = `Paras tuloksesi ${Number(data.best).toLocaleString("fi-FI")} pistettä on yhä voimassa.`;
@@ -1057,18 +1059,29 @@ tr.top td:nth-child(1) { color: var(--gold); }
   }
 
   // ---------- Jako Facebookiin ----------
-  // Facebookin jakoikkuna käyttää pelaajan omaa kirjautumista. Kuva ja kuvaus tulevat pelisivun
-  // Open Graph -tiedoista; Facebook ei salli esitäytettyä tekstiä, joten tulosteksti kopioidaan leikepöydälle.
+  // Facebookin jakoikkuna käyttää pelaajan omaa kirjautumista. Jakokortin otsikko ja kuva tulevat jaetun
+  // sivun Open Graph -tiedoista: tallennetulle tulokselle palvelin tekee oman jakosivun (share.php), jossa
+  // ovat nimimerkki, pisteet ja tuloksesta generoitu kuva. Facebook ei salli esitäytettyä tekstiä, joten
+  // tulosteksti kopioidaan leikepöydälle liitettäväksi.
   const GAME_URL = "https://hessujarvinen.com/softa/colesteroids";
+  function shareUrl() {
+    return store.shareId ? `${GAME_URL}/share.php?id=${store.shareId}` : GAME_URL;
+  }
   function shareText() {
     const pts = run.final.toLocaleString("fi-FI");
-    return `Pääsin kenttään ${run.level} ja sain ${pts} pistettä Colesteroids OG+ -pelissä! 💗 Söin ${run.eaten} hyvää lipoproteiinia ja väistelin kolesteroliökköjä ${fmtTime(run.seconds)} ajan. Pystytkö parempaan?\n\n${GAME_URL}\n#ColesteroidsOG`;
+    const t = fmtTime(run.seconds);
+    const tail = `Pystytkö parempaan? 💗\n\n${shareUrl()}\n#ColesteroidsOG`;
+    if (run.nick) {
+      return `🩺 Sydänosaston tiedote: potilas ${run.nick} pääsi kenttään ${run.level} ja keräsi ${pts} pistettä Colesteroids OG+ -pelissä! ` +
+        `Hyviä lipoproteiineja syöty ${run.eaten}, kolesteroliökköjä väistelty ${t}. Ennuste: täysin koukussa. ${tail}`;
+    }
+    return `Pääsin kenttään ${run.level} ja sain ${pts} pistettä Colesteroids OG+ -pelissä! Söin ${run.eaten} hyvää lipoproteiinia ja väistelin kolesteroliökköjä ${t} ajan. ${tail}`;
   }
   function prepareShare(fromGame) {
     const show = fromGame && run && run.final != null;
     $("shareBox").hidden = !show;
     if (!show) return;
-    $("fbShare").href = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(GAME_URL) + "&hashtag=" + encodeURIComponent("#ColesteroidsOG");
+    $("fbShare").href = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl()) + "&hashtag=" + encodeURIComponent("#ColesteroidsOG");
     $("shareNote").textContent = "Jakoteksti kopioituu leikepöydälle. Liitä se Facebookin julkaisuun.";
   }
   $("fbShare").addEventListener("click", () => {
@@ -1130,7 +1143,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
   $("aboutClose").addEventListener("click", () => { state = "menu"; show("menu"); $("aboutBtn").focus(); });
   $("playAgainBtn").addEventListener("click", startGame);
   $("backBtn").addEventListener("click", toMenu);
-  $("skipBtn").addEventListener("click", () => { lastSaved = null; showBoard(true); });
+  $("skipBtn").addEventListener("click", () => { lastSaved = null; run.nick = null; store.shareId = null; showBoard(true); });
   $("nameForm").addEventListener("submit", async e => {
     e.preventDefault();
     const nick = $("nick").value.replace(/\s+/g, " ").trim();
