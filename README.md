@@ -97,7 +97,7 @@ Pelissä on 50 kenttää. Kenttä 1 on alkuperäinen vuoden 2019 kenttä, kentä
 
 Puhelimessa sydäntä ohjataan ruudun nuolinapeilla tai kallistamalla puhelinta. Kallistusohjaus kytketään valikon napista **Kallistusohjaus: pois / päällä**. iPhone ja iPad kysyvät tällöin luvan liike- ja suuntatietoihin.
 
-Kallistus toimii kuin kuulan vierittäminen: mitä enemmän puhelinta kallistaa, sitä kovemmin sydän kiihtyy siihen suuntaan (täysi teho noin 28 asteen kohdalla, pieni kuollut alue keskellä). Täysi kallistus ylöspäin voittaa painovoiman. Keskiasento otetaan siitä, miten puhelinta pitää pelin alkaessa, ja sen voi nollata kesken pelin **Nollaa**-napista. Ohjaus toimii sekä pysty- että vaaka-asennossa. Nuolinapit toimivat kallistuksen rinnalla.
+Kallistus toimii kuin kuulan vierittäminen: mitä enemmän puhelinta kallistaa, sitä kovemmin sydän kiihtyy siihen suuntaan (täysi teho noin 28 asteen kohdalla, pieni kuollut alue keskellä). Täysi kallistus ylöspäin voittaa painovoiman. Keskiasento otetaan siitä, miten puhelinta pitää pelin alkaessa, ja sen voi nollata kesken pelin **Nollaa**-napista. Ohjaus toimii sekä pysty- että vaaka-asennossa. Nuolinapit toimivat kallistuksen rinnalla, ja ne saa piiloon tai takaisin oikean alakulman pienestä napista. Peli muistaa valinnan, ja kun kallistusohjauksen kytkee pois, nuolinapit palaavat näkyviin.
 
 Ohjaus käyttää selaimen `deviceorientation`-tapahtumia. Jos laite tai selain ei anna kallistustietoa, peli kertoo siitä ja palaa nuolinappeihin.
 

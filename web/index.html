@@ -132,6 +132,16 @@ tr.top td:nth-child(1) { color: var(--gold); }
 #pad .left { grid-column: 1; grid-row: 2; }
 #pad .down { grid-column: 2; grid-row: 2; }
 #pad .right { grid-column: 3; grid-row: 2; }
+#padBtn { position: fixed; right: 16px; bottom: calc(16px + 118px + 8px + env(safe-area-inset-bottom, 0px)); width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: rgba(42,42,48,.6); color: var(--fg); z-index: 5; }
+#padBtn[aria-expanded="false"] { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); color: var(--muted); }
+#padBtn[aria-expanded="false"] .padEye { display: none; }
+#padBtn[aria-expanded="true"] .padHid { display: none; }
+/* Kapealla puhelinnäytöllä F1/Esc/Nollaa nousevat musiikkinappien yläpuolelle, etteivät ne jää nuolinappien alle,
+   ja viestit siirtyvät tilannetietojen alle */
+@media (max-width: 600px) {
+  body.padOn #tools { left: 16px; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  #messages { top: calc(80px + env(safe-area-inset-top, 0px)); right: 10px; }
+}
 #consent { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); margin-inline: auto; max-width: 560px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; font-size: 14px; line-height: 1.45; color: var(--muted); z-index: 10; }
 #consent p { margin: 0; }
 #consent .row { justify-content: flex-end; }
@@ -285,6 +295,9 @@ tr.top td:nth-child(1) { color: var(--gold); }
   <button class="down" data-dir="down" aria-label="Alas" data-i18n-aria="aDown">▼</button>
   <button class="right" data-dir="right" aria-label="Oikealle" data-i18n-aria="aRight">▶</button>
 </div>
+<button id="padBtn" type="button" aria-controls="pad" aria-expanded="true" aria-label="Piilota nuolinapit" title="Piilota nuolinapit" hidden>
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z" opacity=".9"/><path class="padHid" d="M3 3l18 18" stroke="var(--bg, #000)" stroke-width="4" stroke-linecap="round"/><path class="padHid" d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
 <button id="musicBtn" type="button" aria-label="Musiikki pois" title="Musiikki päälle/pois (M)" data-i18n-title="musicTitle">
   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a2.5 2.5 0 1 1-2-2.45V5l12-2v12.5a2.5 2.5 0 1 1-2-2.45V7.1l-8 1.33z"/><path id="musicSlash" d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" hidden/></svg>
 </button>
@@ -398,6 +411,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
       tiltOff: "Kallistusohjaus: pois",
       tiltCal: "Nollaa",
       tiltCalTitle: "Aseta puhelimen nykyinen asento kallistuksen keskikohdaksi",
+      padHide: "Piilota nuolinapit",
+      padShow: "Näytä nuolinapit",
       tiltHint: "Kallista puhelinta ohjataksesi sydäntä. Nollaa-nappi asettaa nykyisen asennon keskikohdaksi.",
       tiltDenied: "Kallistusohjaukseen ei saatu lupaa. Voit pelata nuolinapeilla.",
       tiltNoData: "Laite ei anna kallistustietoa tässä selaimessa. Voit pelata nuolinapeilla."
@@ -491,6 +506,8 @@ tr.top td:nth-child(1) { color: var(--gold); }
       tiltOff: "Tilt control: off",
       tiltCal: "Reset",
       tiltCalTitle: "Use the phone's current position as the centre for tilting",
+      padHide: "Hide arrow buttons",
+      padShow: "Show arrow buttons",
       tiltHint: "Tilt your phone to steer the heart. The Reset button makes the current position the centre.",
       tiltDenied: "Permission for tilt control was not granted. You can play with the arrow buttons.",
       tiltNoData: "This browser does not provide tilt data. You can play with the arrow buttons."
@@ -1565,7 +1582,27 @@ tr.top td:nth-child(1) { color: var(--gold); }
   });
 
   const touch = window.matchMedia("(pointer: coarse)").matches;
-  if (touch) { $("pad").hidden = false; $("tools").hidden = false; }
+  // Nuolinapit voi piilottaa (esim. kallistusohjauksella), valinta muistetaan
+  const PAD_KEY = "colesteroids.pad";
+  let padShown = true;
+  try { padShown = localStorage.getItem(PAD_KEY) !== "hidden"; } catch {}
+  function renderPad() {
+    if (!touch) return;
+    $("pad").hidden = !padShown;
+    document.body.classList.toggle("padOn", padShown);
+    const b = $("padBtn"), label = t(padShown ? "padHide" : "padShow");
+    b.hidden = false;
+    b.setAttribute("aria-expanded", String(padShown));
+    b.setAttribute("aria-label", label);
+    b.title = label;
+  }
+  function setPad(show) {
+    padShown = show;
+    try { localStorage.setItem(PAD_KEY, show ? "shown" : "hidden"); } catch {}
+    renderPad();
+  }
+  $("padBtn").addEventListener("click", e => { setPad(!padShown); e.currentTarget.blur(); });
+  if (touch) { $("tools").hidden = false; renderPad(); }
 
   // ---------- Kallistusohjaus (mobiili) ----------
   // Puhelimen kallistus työntää sydäntä kuin kuulaa: kiihtyvyys kasvaa kallistuksen mukana TILT_MAX_DEG
@@ -1622,6 +1659,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     tilt.on = on;
     if (on) { window.addEventListener("deviceorientation", onOrientation); tilt.recalibrate = true; }
     else window.removeEventListener("deviceorientation", onOrientation);
+    if (!on && !padShown) setPad(true); // ilman kallistusta tarvitaan nuolinapit
     try { localStorage.setItem(TILT_KEY, on ? "on" : "off"); } catch {}
     renderTiltBtn();
     if (!silent) track("tilt", { on });
@@ -1796,6 +1834,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     $("rules").textContent = t("rules", { s: GAME_TIME });
     renderSoundBtn();
     renderTiltBtn();
+    renderPad();
     track("language", { language: l });
   }
   document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
@@ -1867,6 +1906,3 @@ tr.top td:nth-child(1) { color: var(--gold); }
   requestAnimationFrame(frame);
 })();
 </script>
-
-</body>
-</html>
