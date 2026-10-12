@@ -14,7 +14,7 @@ Colesteroids on selaimessa pelattava fysiikkapeli. Ohjaat vaaleanpunaista sydän
 
 | | |
 |---|---|
-| 💗 Sydän | Sinä. Nuolinäppäin lyö sydäntä haluamaasi suuntaan, painovoima vetää alas. |
+| 💗 Sydän | Sinä. Nuolinäppäin lyö sydäntä haluamaasi suuntaan, painovoima vetää alas. Puhelimessa myös kallistamalla. |
 | 🟩 Vihreä kolmio | Hyvä lipoproteiini. Syö: pisteitä ja +10 % energiaa. |
 | 🔴 Punainen pallo | Kolesteroliökkö. Törmäys räjäyttää sen ja vie energiaa. |
 | 💊 Rosuvastatiini | Pilleri, joka ilmestyy kenttään silloin tällöin ja katoaa 9 sekunnin jälkeen. Nappaa se, niin saat 10 sekunniksi turvakaaren: kolesteroliökköihin voi törmätä ilman energian menetystä. Kaari vilkkuu ja tikittää viimeiset 3 sekuntia. |
@@ -92,6 +92,14 @@ Pelissä on 50 kenttää. Kenttä 1 on alkuperäinen vuoden 2019 kenttä, kentä
 50. Ison verenkierron finaali
 
 </details>
+
+### Ohjaus puhelimella
+
+Puhelimessa sydäntä ohjataan ruudun nuolinapeilla tai kallistamalla puhelinta. Kallistusohjaus kytketään valikon napista **Kallistusohjaus: pois / päällä**. iPhone ja iPad kysyvät tällöin luvan liike- ja suuntatietoihin.
+
+Kallistus toimii kuin kuulan vierittäminen: mitä enemmän puhelinta kallistaa, sitä kovemmin sydän kiihtyy siihen suuntaan (täysi teho noin 28 asteen kohdalla, pieni kuollut alue keskellä). Täysi kallistus ylöspäin voittaa painovoiman. Keskiasento otetaan siitä, miten puhelinta pitää pelin alkaessa, ja sen voi nollata kesken pelin **Nollaa**-napista. Ohjaus toimii sekä pysty- että vaaka-asennossa. Nuolinapit toimivat kallistuksen rinnalla.
+
+Ohjaus käyttää selaimen `deviceorientation`-tapahtumia. Jos laite tai selain ei anna kallistustietoa, peli kertoo siitä ja palaa nuolinappeihin.
 
 ### Kielet
 

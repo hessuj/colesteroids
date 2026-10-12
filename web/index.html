@@ -142,6 +142,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 #soundBtn { position: fixed; left: 64px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: rgba(42,42,48,.6); color: var(--fg); z-index: 5; }
 #soundBtn.off { color: var(--muted); }
 #tools { position: fixed; left: 112px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; }
+#tiltBtn[aria-pressed="true"] { border-color: var(--shield); color: var(--shield); }
 #tools button { padding: 6px 12px; font-size: 14px; background: rgba(42,42,48,.6); }
 @media (prefers-reduced-motion: reduce) { #healthFill { transition: none; } #timer.low { animation: none; } }
 </style>
@@ -181,6 +182,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
       <button id="startBtn" class="primary" data-i18n="start">Aloita peli</button>
       <button id="scoresBtn" data-i18n="leaderboard">Tulostaulu</button>
       <button id="aboutBtn" data-i18n="about">Tietoja</button>
+      <button id="tiltBtn" type="button" aria-pressed="false" hidden>Kallistusohjaus: pois</button>
     </div>
     <p class="copy" data-i18n="menuCopy">© 2026 Hessu Järvinen · MIT-lisenssi</p>
   </div>
@@ -294,6 +296,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 <div id="tools" hidden>
   <button id="helpBtn">F1</button>
   <button id="escBtn">Esc</button>
+  <button id="tiltCalBtn" data-i18n="tiltCal" data-i18n-title="tiltCalTitle" hidden>Nollaa</button>
 </div>
 
 <script>
@@ -390,7 +393,14 @@ tr.top td:nth-child(1) { color: var(--gold); }
       helpF1: "F1 - Näytä näppäinohjeet",
       helpM: "M - Musiikki päälle/pois",
       helpN: "N - Äänitehosteet päälle/pois",
-      helpEsc: "Escape - Lopeta peli"
+      helpEsc: "Escape - Lopeta peli",
+      tiltOn: "Kallistusohjaus: päällä",
+      tiltOff: "Kallistusohjaus: pois",
+      tiltCal: "Nollaa",
+      tiltCalTitle: "Aseta puhelimen nykyinen asento kallistuksen keskikohdaksi",
+      tiltHint: "Kallista puhelinta ohjataksesi sydäntä. Nollaa-nappi asettaa nykyisen asennon keskikohdaksi.",
+      tiltDenied: "Kallistusohjaukseen ei saatu lupaa. Voit pelata nuolinapeilla.",
+      tiltNoData: "Laite ei anna kallistustietoa tässä selaimessa. Voit pelata nuolinapeilla."
     },
     en: {
       aGameArea: "Colesteroids game area",
@@ -476,7 +486,14 @@ tr.top td:nth-child(1) { color: var(--gold); }
       helpF1: "F1 - Show controls",
       helpM: "M - Music on/off",
       helpN: "N - Sound effects on/off",
-      helpEsc: "Escape - Quit game"
+      helpEsc: "Escape - Quit game",
+      tiltOn: "Tilt control: on",
+      tiltOff: "Tilt control: off",
+      tiltCal: "Reset",
+      tiltCalTitle: "Use the phone's current position as the centre for tilting",
+      tiltHint: "Tilt your phone to steer the heart. The Reset button makes the current position the centre.",
+      tiltDenied: "Permission for tilt control was not granted. You can play with the arrow buttons.",
+      tiltNoData: "This browser does not provide tilt data. You can play with the arrow buttons."
     }
   };
   // Kenttien nimet: suomenkieliset ovat LAYOUTS-taulukossa, muut kielet tässä samassa järjestyksessä
@@ -935,6 +952,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
         b.vy = Math.sin(b.brain.dir) * b.brain.speed;
       }
       b.vy += GRAVITY * dt;
+      if (b === player && tilt.on && state === "playing" && !paused) applyTilt(b, dt);
       b.x += b.vx * dt; b.y += b.vy * dt;
       // Seinäaukosta ulos lentänyt tulee sisään toiselta puolelta
       if (b.x < level.left - b.r) { b.x += level.width + 2 * b.r; if (b === player) sfx.warp(); }
@@ -1201,6 +1219,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
   function startGame() {
     sfx.unlock();
+    tilt.recalibrate = true;   // kallistuksen keskikohta pelin alkaessa
     music.start();
     store.shareId = null;
     track("game_start", { language: lang });
@@ -1547,6 +1566,91 @@ tr.top td:nth-child(1) { color: var(--gold); }
 
   const touch = window.matchMedia("(pointer: coarse)").matches;
   if (touch) { $("pad").hidden = false; $("tools").hidden = false; }
+
+  // ---------- Kallistusohjaus (mobiili) ----------
+  // Puhelimen kallistus työntää sydäntä kuin kuulaa: kiihtyvyys kasvaa kallistuksen mukana TILT_MAX_DEG
+  // asteeseen asti. Keskikohta otetaan pelin alkaessa (tai Nollaa-napista), joten luonteva pitoasento on nolla.
+  // Laitteen akselit käännetään näytön asennon mukaan (pysty, vaaka vasemmalle tai oikealle).
+  const TILT_KEY = "colesteroids.tilt";
+  const TILT_ACCEL = 1100;      // täysi kallistus voittaa painovoiman (400)
+  const TILT_MAX_DEG = 28;
+  const TILT_DEADZONE = 2.5;
+  const TILT_MAX_SPEED = 950;
+  const tilt = { on: false, beta: null, gamma: null, beta0: null, gamma0: null, lastEvent: 0, recalibrate: true };
+  const tiltSupported = touch && "DeviceOrientationEvent" in window;
+
+  function screenAngle() {
+    const a = (screen.orientation && typeof screen.orientation.angle === "number") ? screen.orientation.angle : (window.orientation || 0);
+    return ((a % 360) + 360) % 360;
+  }
+  // Laitteen kallistus (asteina keskikohdasta) -> näytön suunnat: x oikealle, y alaspäin näytöllä
+  function tiltToScreen(dBeta, dGamma, angle) {
+    switch (angle) {
+      case 90:  return { x: dBeta,   y: -dGamma };
+      case 180: return { x: -dGamma, y: -dBeta };
+      case 270: return { x: -dBeta,  y: dGamma };
+      default:  return { x: dGamma,  y: dBeta };
+    }
+  }
+  function shape(deg) {
+    const m = Math.abs(deg);
+    if (m < TILT_DEADZONE) return 0;
+    return Math.sign(deg) * Math.min(1, (m - TILT_DEADZONE) / (TILT_MAX_DEG - TILT_DEADZONE));
+  }
+  function applyTilt(b, dt) {
+    if (tilt.beta === null) return;
+    if (tilt.recalibrate) { tilt.beta0 = tilt.beta; tilt.gamma0 = tilt.gamma; tilt.recalibrate = false; }
+    const dir = tiltToScreen(tilt.beta - tilt.beta0, tilt.gamma - tilt.gamma0, screenAngle());
+    // näytöllä alaspäin = pelimaailmassa -y (y ylöspäin)
+    b.vx += shape(dir.x) * TILT_ACCEL * dt;
+    b.vy -= shape(dir.y) * TILT_ACCEL * dt;
+    const sp = Math.hypot(b.vx, b.vy);
+    if (sp > TILT_MAX_SPEED) { b.vx *= TILT_MAX_SPEED / sp; b.vy *= TILT_MAX_SPEED / sp; }
+  }
+  function onOrientation(e) {
+    if (e.beta === null || e.gamma === null) return;
+    tilt.beta = e.beta; tilt.gamma = e.gamma; tilt.lastEvent = performance.now();
+  }
+  function renderTiltBtn() {
+    const btn = $("tiltBtn");
+    btn.hidden = !tiltSupported;
+    btn.textContent = t(tilt.on ? "tiltOn" : "tiltOff");
+    btn.setAttribute("aria-pressed", String(tilt.on));
+    $("tiltCalBtn").hidden = !tilt.on;
+  }
+  function setTilt(on, silent) {
+    tilt.on = on;
+    if (on) { window.addEventListener("deviceorientation", onOrientation); tilt.recalibrate = true; }
+    else window.removeEventListener("deviceorientation", onOrientation);
+    try { localStorage.setItem(TILT_KEY, on ? "on" : "off"); } catch {}
+    renderTiltBtn();
+    if (!silent) track("tilt", { on });
+  }
+  async function enableTilt() {
+    // iPhone ja iPad kysyvät luvan liiketietoihin; kutsu pitää tehdä napin painalluksesta
+    const DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === "function") {
+      let res = "denied";
+      try { res = await DOE.requestPermission(); } catch {}
+      if (res !== "granted") { message(t("tiltDenied")); setTilt(false); return; }
+    }
+    setTilt(true);
+    message(t("tiltHint"));
+    // jos tapahtumia ei tule, selain ei anna kallistustietoa (esim. tietokone tai estetty iframe)
+    const started = performance.now();
+    setTimeout(() => {
+      if (tilt.on && tilt.lastEvent < started) { message(t("tiltNoData")); setTilt(false); }
+    }, 1500);
+  }
+  $("tiltBtn").addEventListener("click", () => { tilt.on ? setTilt(false) : enableTilt(); });
+  $("tiltCalBtn").addEventListener("click", e => { tilt.recalibrate = true; e.currentTarget.blur(); });
+  if (tiltSupported) {
+    let saved = null;
+    try { saved = localStorage.getItem(TILT_KEY); } catch {}
+    // ilman iOS-lupakyselyä kallistus voidaan palauttaa suoraan; iOS:ssä pelaaja kytkee sen uudelleen
+    if (saved === "on" && typeof window.DeviceOrientationEvent.requestPermission !== "function") setTilt(true, true);
+  }
+  renderTiltBtn();
   document.querySelectorAll("#pad button").forEach(btn =>
     btn.addEventListener("pointerdown", e => { e.preventDefault(); liikutaPelaajaa(btn.dataset.dir); }));
   $("helpBtn").addEventListener("click", showControlHelp);
@@ -1691,6 +1795,7 @@ tr.top td:nth-child(1) { color: var(--gold); }
     applyLang();
     $("rules").textContent = t("rules", { s: GAME_TIME });
     renderSoundBtn();
+    renderTiltBtn();
     track("language", { language: l });
   }
   document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
